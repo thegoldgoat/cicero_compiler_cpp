@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.20)
 
 project("RegexParser")
 
@@ -15,11 +15,45 @@ include_directories(/usr/include/antlr4-runtime)
 
 include_directories(include)
 
+set(ANTLR4_TOOL /usr/bin/antlr4)
+
+add_custom_command(
+    OUTPUT
+        ${PROJECT_BINARY_DIR}/antlr-grammar/regexLexer.cpp
+    DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/antlr-grammar/regexLexer.g4
+    COMMAND
+        ${ANTLR4_TOOL}
+        -Dlanguage=Cpp
+        -no-listener
+        -visitor
+        -o ${PROJECT_BINARY_DIR}/antlr-grammar
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/antlr-grammar/regexLexer.g4
+)
+
+add_custom_command(
+    OUTPUT
+        ${PROJECT_BINARY_DIR}/antlr-grammar/regexParser.cpp
+    DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/antlr-grammar/regexParser.g4
+        ${PROJECT_BINARY_DIR}/antlr-grammar/regexLexer.cpp
+    COMMAND
+        ${ANTLR4_TOOL}
+        -Dlanguage=Cpp
+        -no-listener
+        -visitor
+        -o ${PROJECT_BINARY_DIR}/antlr-grammar
+        -lib ${PROJECT_BINARY_DIR}/antlr-grammar
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/antlr-grammar/regexParser.g4
+)
+
+include_directories(${PROJECT_BINARY_DIR}/antlr-grammar)
+
 add_library(
         RegexParser
         SHARED
-        src/antlrlib/regexLexer.cpp
-        src/antlrlib/regexParser.cpp
+        ${PROJECT_BINARY_DIR}/antlr-grammar/regexLexer.cpp
+        ${PROJECT_BINARY_DIR}/antlr-grammar/regexParser.cpp
 )
 
 target_link_libraries(
