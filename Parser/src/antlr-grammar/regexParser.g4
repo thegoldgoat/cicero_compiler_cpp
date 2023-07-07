@@ -18,23 +18,21 @@ quantifier:
 	QUESTION
 	| STAR
 	| PLUS
-	| LBRACE quantity RBRACE;
+	| QUANTITY_BEGIN quantity QUANTITY_END;
 quantity:
-	minnum=NUM COMMA maxnum=NUM // From Integer_1 to Integer_2
-	| atleastnum=NUM COMMA // At least Integer
-	| exactlynum=NUM; // Exactly Integer
+	minnum=QUANTITY_NUM QUANTITY_SEPARATOR maxnum=QUANTITY_NUM // From Integer_1 to Integer_2
+	| atleastnum=QUANTITY_NUM QUANTITY_SEPARATOR // At least Integer
+	| exactlynum=QUANTITY_NUM; // Exactly Integer
 
 atom:
 	LPAR regExp RPAR
-	| LBRACKET group RBRACKET
-	| LBRACKET HAT group RBRACKET
+	| LBRACKET group+ RBRACKET
+	| LBRACKET HAT group+ RBRACKET
 	| terminal_sequence
 	| metachar
-	| ANYCHAR
-	| DOLLAR
-	| MINUS;
+	| ANYCHAR;
 
-terminal_sequence: CHAR | NUM | COMMA;
+terminal_sequence: CHAR | DIGIT_CHAR;
 
 metachar:
 	WHITESPACE
@@ -45,9 +43,6 @@ metachar:
 	| DIGIT_COMPLEMENTED;
 
 group:
-	terminal_sequence MINUS terminal_sequence group
-	| terminal_sequence MINUS terminal_sequence
-	| terminal_sequence group
-	| terminal_sequence
-	| metachar group
+	first_char=terminal_sequence MINUS second_char=terminal_sequence
+	| single_char=terminal_sequence
 	| metachar;

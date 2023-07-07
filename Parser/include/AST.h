@@ -11,6 +11,10 @@ namespace RegexParser::AST {
 
 using namespace std;
 
+// Forward declarations
+class RegExp;
+class Quantifier;
+
 // Base Abstract class for an AST node
 class Node {
   public:
@@ -21,35 +25,57 @@ class Atom : Node {
   public:
 };
 
+class AnyChar : public Atom {};
+
+class Char : public Atom {
+  public:
+    Char(char c) : c(c) {}
+
+  private:
+    char c;
+};
+
+class SubExpression : public Atom {
+  public:
+    SubExpression(unique_ptr<RegExp> regExp) : regExp(move(regExp)) {}
+
+  private:
+    unique_ptr<RegExp> regExp;
+};
+
+class Group : public Atom {
+  public:
+    Group(vector<bool> &&charsToMatch) : charsToMatch(move(charsToMatch)) {}
+
+  private:
+    vector<bool> charsToMatch;
+};
+
 enum QuantifierType { STAR, PLUS, OPTIONAL, RANGE };
 
 // Abstract AST node for a quantifier
 class Quantifier : Node {
   public:
-    static Quantifier buildStarQuantifier() {
-        return Quantifier(QuantifierType::STAR, 0, -1);
+    static unique_ptr<Quantifier> buildStarQuantifier() {
+        return make_unique<Quantifier>(QuantifierType::STAR, 0, -1);
     }
 
-    static Quantifier buildPlusQuantifier() {
-        return Quantifier(QuantifierType::PLUS, 1, -1);
+    static unique_ptr<Quantifier> buildPlusQuantifier() {
+        return make_unique<Quantifier>(QuantifierType::PLUS, 1, -1);
     }
 
-    static Quantifier buildOptionalQuantifier() {
-        return Quantifier(QuantifierType::OPTIONAL, 0, 1);
+    static unique_ptr<Quantifier> buildOptionalQuantifier() {
+        return make_unique<Quantifier>(QuantifierType::OPTIONAL, 0, 1);
     }
 
-    static Quantifier buildRangeQuantifier(int min, int max) {
-        return Quantifier(QuantifierType::RANGE, min, max);
+    static unique_ptr<Quantifier> buildRangeQuantifier(int min, int max) {
+        return make_unique<Quantifier>(QuantifierType::RANGE, min, max);
     }
 
-    ~Quantifier() { cout << "Quantifier destructor called" << endl; }
+    Quantifier(QuantifierType type, int min, int max)
+        : type(type), min(min), max(max) {}
 
   private:
-    Quantifier(QuantifierType type, int min, int max)
-        : type(type), min(min), max(max) {
-        cout << "Quantifier constructor called" << endl;
-    }
-
     QuantifierType type;
     int min;
     int max;
@@ -58,33 +84,33 @@ class Quantifier : Node {
 // AST node for a "piece", which is an atom with an optional quantifier
 class Piece : Node {
   public:
-    Piece(Atom atom, optional<Quantifier> quantifier)
-        : atom(atom), quantifier(quantifier) {}
+    Piece(unique_ptr<Atom> atom, unique_ptr<Quantifier> quantifier)
+        : atom(move(atom)), quantifier(move(quantifier)) {}
 
-    bool hasQuantifier() { return quantifier.has_value(); }
+    bool hasQuantifier() { return quantifier != nullptr; }
 
   private:
-    Atom atom;
-    optional<Quantifier> quantifier;
+    unique_ptr<Atom> atom;
+    unique_ptr<Quantifier> quantifier;
 };
 
 // AST node for a concatenation of "pieces"
 class Concatenation : Node {
   public:
-    Concatenation(vector<Piece> pieces) : pieces(move(pieces)) {}
+    Concatenation(vector<unique_ptr<Piece>> pieces) : pieces(move(pieces)) {}
 
   private:
-    vector<Piece> pieces;
+    vector<unique_ptr<Piece>> pieces;
 };
 
 // AST node for a regular expression (or subexpression)
 class RegExp : Node {
   public:
-    RegExp(vector<Concatenation> &&concatenations)
+    RegExp(vector<unique_ptr<Concatenation>> &&concatenations)
         : concatenations(move(concatenations)) {}
 
   private:
-    vector<Concatenation> concatenations;
+    vector<unique_ptr<Concatenation>> concatenations;
 };
 
 } // namespace RegexParser::AST

@@ -2,49 +2,114 @@
 
 #include "Visitor.h"
 #include "AST.h"
+#include "metachars.h"
 #include "regexParserBaseVisitor.h"
 
 using namespace std;
 
 namespace RegexParser {
 
-AST::RegExp RegexVisitor::visitRegExp(regexParser::RegExpContext *ctx) {
-    vector<AST::Concatenation> concatenations;
+unique_ptr<AST::RegExp>
+RegexVisitor::visitRegExp(regexParser::RegExpContext *ctx) {
+    vector<unique_ptr<AST::Concatenation>> concatenations;
     concatenations.reserve(ctx->concatenation().size());
     for (auto concatenation : ctx->concatenation()) {
         concatenations.push_back(visitConcatenation(concatenation));
     }
 
-    return AST::RegExp(move(concatenations));
+    return make_unique<AST::RegExp>(move(concatenations));
 }
 
-AST::Concatenation
+unique_ptr<AST::Concatenation>
 RegexVisitor::visitConcatenation(regexParser::ConcatenationContext *ctx) {
-    vector<AST::Piece> pieces;
+    vector<unique_ptr<AST::Piece>> pieces;
+    pieces.reserve(ctx->piece().size());
     for (auto piece : ctx->piece()) {
         pieces.emplace_back(visitPiece(piece));
     }
-    return AST::Concatenation(move(pieces));
+    return make_unique<AST::Concatenation>(AST::Concatenation(move(pieces)));
 }
 
-AST::Piece RegexVisitor::visitPiece(regexParser::PieceContext *ctx) {
-    cout << "Piece = " << ctx->getText() << endl;
+unique_ptr<AST::Piece>
+RegexVisitor::visitPiece(regexParser::PieceContext *ctx) {
     auto atom = visitAtom(ctx->atom());
     if (ctx->quantifier()) {
-        return AST::Piece(move(atom), std::optional<AST::Quantifier>(
-                                          visitQuantifier(ctx->quantifier())));
+        return make_unique<AST::Piece>(move(atom),
+                                       visitQuantifier(ctx->quantifier()));
     } else {
-        return AST::Piece(move(atom), std::optional<AST::Quantifier>());
+        return make_unique<AST::Piece>(move(atom), nullptr);
     }
 }
 
-AST::Atom RegexVisitor::visitAtom(regexParser::AtomContext *ctx) {
-    // TODO: Implement
-    cout << "Atom = " << ctx->getText() << endl;
-    return AST::Atom({});
+unique_ptr<AST::Atom> RegexVisitor::visitAtom(regexParser::AtomContext *ctx) {
+    // Metachar
+    if (ctx->metachar()) {
+        auto charSet = visitMetachar(ctx->metachar());
+        return make_unique<AST::Atom>(AST::Group(move(charSet)));
+    }
+
+    // Single char
+    if (ctx->terminal_sequence()) {
+        return make_unique<AST::Atom>(
+            AST::Char({ctx->terminal_sequence()->getText()[0]}));
+    }
+
+    // Any char
+    if (ctx->ANYCHAR()) {
+        return make_unique<AST::Atom>(AST::AnyChar());
+    }
+
+    // Subregex
+    if (ctx->LPAR()) {
+        auto subregex = visitRegExp(ctx->regExp());
+        return make_unique<AST::Atom>(AST::SubExpression(move(subregex)));
+    }
+
+    // Group
+    if (ctx->LBRACKET()) {
+        vector<bool> charSet(256, false);
+        for (auto &groupCtx : ctx->group()) {
+            if (groupCtx->metachar()) {
+                auto mergeChar = visitMetachar(groupCtx->metachar());
+
+                for (int i = 0; i < charSet.size(); i++) {
+                    charSet[i] = charSet[i] || mergeChar[i];
+                }
+            } else if (groupCtx->single_char) {
+                charSet[groupCtx->single_char->getText()[0]] = true;
+            } else {
+                auto begin = groupCtx->first_char->getText()[0];
+                auto end = groupCtx->second_char->getText()[0];
+
+                if (begin > end) {
+                    throw runtime_error(
+                        "Invalid character range, second must be greater than "
+                        "first: '" +
+                        groupCtx->getText() + "' at " +
+                        groupCtx->getSourceInterval().toString());
+                }
+
+                for (int i = begin; i <= end; i++) {
+                    charSet[i] = true;
+                }
+            }
+        }
+
+        // Negate the character set if the HAT is present
+        if (ctx->HAT()) {
+            for (int i = 0; i < charSet.size(); i++) {
+                charSet[i] = !charSet[i];
+            }
+        }
+
+        return make_unique<AST::Atom>(AST::Group(move(charSet)));
+    }
+
+    throw runtime_error("Invalid atom: " + ctx->getText() + " at " +
+                        ctx->getSourceInterval().toString());
 }
 
-AST::Quantifier
+unique_ptr<AST::Quantifier>
 RegexVisitor::visitQuantifier(regexParser::QuantifierContext *ctx) {
     if (ctx->QUESTION()) {
         return AST::Quantifier::buildOptionalQuantifier();
@@ -68,7 +133,27 @@ RegexVisitor::visitQuantifier(regexParser::QuantifierContext *ctx) {
     throw runtime_error("Invalid quantifier");
 }
 
-std::pair<int, int> RegexVisitor::visitQuantity(regexParser::QuantityContext *ctx) {
+vector<bool> RegexVisitor::visitMetachar(regexParser::MetacharContext *ctx) {
+    char metachar = ctx->getText()[1];
+    switch (metachar) {
+    case 'd':
+        return DIGIT_SET;
+    case 'D':
+        return DIGIT_SET_COMPLEMENTED;
+    case 'w':
+        return WORD_SET;
+    case 'W':
+        return WORD_SET_COMPLEMENTED;
+    case 's':
+        return WHITESPACE_SET;
+    case 'S':
+        return WHITESPACE_SET_COMPLEMENTED;
+    default:
+        throw runtime_error("Invalid metachar");
+    }
+}
+
+pair<int, int> RegexVisitor::visitQuantity(regexParser::QuantityContext *ctx) {
     if (ctx->exactlynum) {
         int exactVal = stoi(ctx->exactlynum->getText());
         return {exactVal, exactVal};

@@ -49,11 +49,25 @@ add_custom_command(
 
 include_directories(${PROJECT_BINARY_DIR}/antlr-grammar)
 
+add_custom_command(
+    OUTPUT
+        ${PROJECT_BINARY_DIR}/include/metachars.h
+    DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_metachar_range.py
+    COMMAND
+        python3
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_metachar_range.py
+        ${PROJECT_BINARY_DIR}/include/metachars.h
+)
+
+include_directories(${PROJECT_BINARY_DIR}/include)
+
 add_library(
         RegexParser
         SHARED
         ${PROJECT_BINARY_DIR}/antlr-grammar/regexLexer.cpp
         ${PROJECT_BINARY_DIR}/antlr-grammar/regexParser.cpp
+        ${PROJECT_BINARY_DIR}/include/metachars.h
 )
 
 target_link_libraries(

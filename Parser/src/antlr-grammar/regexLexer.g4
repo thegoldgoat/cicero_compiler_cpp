@@ -14,10 +14,9 @@ LPAR: '(';
 RPAR: ')';
 LBRACKET: '[';
 RBRACKET: ']';
-LBRACE: '{';
-RBRACE: '}';
+QUANTITY_BEGIN: '{' -> pushMode(QUANTITY);
 
-NUM: [0-9]+;
+DIGIT_CHAR: [0-9];
 
 DIGIT: '\\d';
 DIGIT_COMPLEMENTED: '\\D';
@@ -30,3 +29,8 @@ WHITESPACE_COMPLEMENTED: '\\S';
 
 CHAR:
 	~('.' | '\\' | '?' | '*' | '+' | '(' | ')' | '|' | '[' | ']');
+
+mode QUANTITY;
+QUANTITY_END: '}' -> popMode;
+QUANTITY_NUM: [0-9]+;
+QUANTITY_SEPARATOR: ',';
