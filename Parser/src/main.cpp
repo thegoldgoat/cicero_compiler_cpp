@@ -33,5 +33,7 @@ int main(int argc, char **argv) {
     RegexVisitor theVisitor;
     auto ast = theVisitor.visitRegExp(regExpTree);
 
-    std::cout << "Parsing done :)" << std::endl;
+    std::cout << "Parsing done, printing DOT representation:" << std::endl;
+
+    std::cout << "digraph {\n" << ast->toDotty() << "}" << std::endl;
 }

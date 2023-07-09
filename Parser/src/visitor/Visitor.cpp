@@ -45,24 +45,24 @@ unique_ptr<AST::Atom> RegexVisitor::visitAtom(regexParser::AtomContext *ctx) {
     // Metachar
     if (ctx->metachar()) {
         auto charSet = visitMetachar(ctx->metachar());
-        return make_unique<AST::Atom>(AST::Group(move(charSet)));
+        return make_unique<AST::Group>(AST::Group(move(charSet)));
     }
 
     // Single char
     if (ctx->terminal_sequence()) {
-        return make_unique<AST::Atom>(
+        return make_unique<AST::Char>(
             AST::Char({ctx->terminal_sequence()->getText()[0]}));
     }
 
     // Any char
     if (ctx->ANYCHAR()) {
-        return make_unique<AST::Atom>(AST::AnyChar());
+        return make_unique<AST::AnyChar>(AST::AnyChar());
     }
 
     // Subregex
     if (ctx->LPAR()) {
         auto subregex = visitRegExp(ctx->regExp());
-        return make_unique<AST::Atom>(AST::SubExpression(move(subregex)));
+        return make_unique<AST::SubRegex>(AST::SubRegex(move(subregex)));
     }
 
     // Group
@@ -102,7 +102,7 @@ unique_ptr<AST::Atom> RegexVisitor::visitAtom(regexParser::AtomContext *ctx) {
             }
         }
 
-        return make_unique<AST::Atom>(AST::Group(move(charSet)));
+        return make_unique<AST::Group>(AST::Group(move(charSet)));
     }
 
     throw runtime_error("Invalid atom: " + ctx->getText() + " at " +
