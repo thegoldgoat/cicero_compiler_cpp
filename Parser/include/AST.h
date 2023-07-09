@@ -30,7 +30,8 @@ class Node {
     const string nodeName;
 };
 
-// AST node for an atom, which is an abstract class for terminal nodes or subregex
+// AST node for an atom, which is an abstract class for terminal nodes or
+// subregex
 class Atom : public Node {
   public:
     Atom(const string &&nodeName) : Node(std::move(nodeName)) {}
@@ -43,7 +44,7 @@ class AnyChar : public Atom {
 
 class Char : public Atom {
   public:
-    Char(char c) : c(c), Atom(string("Char: ") + c) {}
+    Char(char c) : Atom(string("Char: ") + c), c(c) {}
 
   private:
     char c;
@@ -52,7 +53,7 @@ class Char : public Atom {
 class SubRegex : public Atom {
   public:
     SubRegex(unique_ptr<RegExp> regExp)
-        : regExp(move(regExp)), Atom("SubRegex") {}
+        : Atom("SubRegex"), regExp(move(regExp)) {}
 
     string toDotty() const override;
 
@@ -63,7 +64,7 @@ class SubRegex : public Atom {
 class Group : public Atom {
   public:
     Group(vector<bool> &&charsToMatch)
-        : charsToMatch(move(charsToMatch)), Atom("Group") {}
+        : Atom("Group"), charsToMatch(move(charsToMatch)) {}
 
   private:
     vector<bool> charsToMatch;
@@ -75,26 +76,29 @@ enum QuantifierType { STAR, PLUS, OPTIONAL, RANGE };
 class Quantifier : public Node {
   public:
     static unique_ptr<Quantifier> buildStarQuantifier() {
-        return make_unique<Quantifier>(Quantifier(QuantifierType::STAR, 0, -1, "*"));
+        return make_unique<Quantifier>(
+            Quantifier(QuantifierType::STAR, 0, -1, "*"));
     }
 
     static unique_ptr<Quantifier> buildPlusQuantifier() {
-        return make_unique<Quantifier>(Quantifier(QuantifierType::PLUS, 1, -1, "+"));
+        return make_unique<Quantifier>(
+            Quantifier(QuantifierType::PLUS, 1, -1, "+"));
     }
 
     static unique_ptr<Quantifier> buildOptionalQuantifier() {
-        return make_unique<Quantifier>(Quantifier(QuantifierType::OPTIONAL, 0, 1, "?"));
+        return make_unique<Quantifier>(
+            Quantifier(QuantifierType::OPTIONAL, 0, 1, "?"));
     }
 
     static unique_ptr<Quantifier> buildRangeQuantifier(int min, int max) {
-        return make_unique<Quantifier>(Quantifier(QuantifierType::RANGE, min, max,
-                                       "{" + to_string(min) + "," +
-                                           to_string(max) + "}"));
+        return make_unique<Quantifier>(
+            Quantifier(QuantifierType::RANGE, min, max,
+                       "{" + to_string(min) + "," + to_string(max) + "}"));
     }
 
   private:
     Quantifier(QuantifierType type, int min, int max, string &&nodeNameTag)
-        : type(type), min(min), max(max), Node("Quantifier: " + nodeNameTag) {}
+        : Node("Quantifier: " + nodeNameTag), type(type), min(min), max(max) {}
     QuantifierType type;
     int min;
     int max;
@@ -104,7 +108,7 @@ class Quantifier : public Node {
 class Piece : public Node {
   public:
     Piece(unique_ptr<Atom> atom, unique_ptr<Quantifier> quantifier)
-        : atom(move(atom)), quantifier(move(quantifier)), Node("Piece") {}
+        : Node("Piece"), atom(move(atom)), quantifier(move(quantifier)) {}
 
     bool hasQuantifier() { return quantifier != nullptr; }
 
@@ -129,7 +133,7 @@ class Piece : public Node {
 class Concatenation : public Node {
   public:
     Concatenation(vector<unique_ptr<Piece>> pieces)
-        : pieces(move(pieces)), Node("Concatenation") {}
+        : Node("Concatenation"), pieces(move(pieces)) {}
 
     string toDotty() const override {
         string dotty = Node::toDotty();
@@ -148,7 +152,7 @@ class Concatenation : public Node {
 class RegExp : public Node {
   public:
     RegExp(vector<unique_ptr<Concatenation>> &&concatenations)
-        : concatenations(move(concatenations)), Node("RegExp") {}
+        : Node("RegExp"), concatenations(move(concatenations)) {}
 
     string toDotty() const override {
         string dotty = Node::toDotty();

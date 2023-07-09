@@ -72,7 +72,7 @@ unique_ptr<AST::Atom> RegexVisitor::visitAtom(regexParser::AtomContext *ctx) {
             if (groupCtx->metachar()) {
                 auto mergeChar = visitMetachar(groupCtx->metachar());
 
-                for (int i = 0; i < charSet.size(); i++) {
+                for (vector<bool>::size_type i = 0; i < charSet.size(); i++) {
                     charSet[i] = charSet[i] || mergeChar[i];
                 }
             } else if (groupCtx->single_char) {
@@ -97,7 +97,7 @@ unique_ptr<AST::Atom> RegexVisitor::visitAtom(regexParser::AtomContext *ctx) {
 
         // Negate the character set if the HAT is present
         if (ctx->HAT()) {
-            for (int i = 0; i < charSet.size(); i++) {
+            for (vector<bool>::size_type i = 0; i < charSet.size(); i++) {
                 charSet[i] = !charSet[i];
             }
         }
