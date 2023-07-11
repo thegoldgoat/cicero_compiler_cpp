@@ -20,9 +20,14 @@ int main(int argc, char **argv) {
 
     auto regexAST = RegexParser::parseRegexFromFile(argv[1]);
 
+    if (!regexAST) {
+        cout << "Error parsing regex? Maybe the file does not exists or it is incorrect?" << endl;
+        return -1;
+    }
+
     auto module =
         cicero_compiler::MLIRGenerator(context).mlirGen(move(regexAST));
 
-    module.dump();
+    module.print(llvm::outs());
     return 0;
 }

@@ -96,6 +96,11 @@ class Quantifier : public Node {
                        "{" + to_string(min) + "," + to_string(max) + "}"));
     }
 
+    QuantifierType getType() const { return type; }
+
+    int getMin() const { return min; }
+    int getMax() const { return max; }
+
   private:
     Quantifier(QuantifierType type, int min, int max, string &&nodeNameTag)
         : Node("Quantifier: " + nodeNameTag), type(type), min(min), max(max) {}
@@ -124,6 +129,10 @@ class Piece : public Node {
         return dotty;
     }
 
+    Atom &getAtom() const { return *atom; }
+
+    Quantifier &getQuantifier() const { return *quantifier; }
+
   private:
     unique_ptr<Atom> atom;
     unique_ptr<Quantifier> quantifier;
@@ -144,9 +153,7 @@ class Concatenation : public Node {
         return dotty;
     }
 
-  const vector<unique_ptr<Piece>> &getSymbols() const {
-    return pieces;
-  }
+    const vector<unique_ptr<Piece>> &getPieces() const { return pieces; }
 
   private:
     vector<unique_ptr<Piece>> pieces;
