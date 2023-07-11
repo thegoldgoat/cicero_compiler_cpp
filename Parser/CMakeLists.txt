@@ -67,6 +67,8 @@ add_library(
         SHARED
         ${PROJECT_BINARY_DIR}/antlr-grammar/regexLexer.cpp
         ${PROJECT_BINARY_DIR}/antlr-grammar/regexParser.cpp
+        ${PROJECT_SOURCE_DIR}/src/ASTParser.cpp
+        ${PROJECT_SOURCE_DIR}/src/visitor/Visitor.cpp
         ${PROJECT_BINARY_DIR}/include/metachars.h
 )
 
@@ -77,7 +79,6 @@ target_link_libraries(
 
 add_executable(parsertest
         src/main.cpp
-        src/visitor/Visitor.cpp
 )
 
 target_link_libraries(

@@ -144,6 +144,10 @@ class Concatenation : public Node {
         return dotty;
     }
 
+  const vector<unique_ptr<Piece>> &getSymbols() const {
+    return pieces;
+  }
+
   private:
     vector<unique_ptr<Piece>> pieces;
 };
@@ -162,6 +166,10 @@ class RegExp : public Node {
                      concatenation->toDotty();
         }
         return dotty;
+    }
+
+    const vector<unique_ptr<Concatenation>> &getConcatenations() const {
+        return concatenations;
     }
 
   private:

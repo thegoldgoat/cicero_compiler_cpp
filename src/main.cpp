@@ -1,20 +1,27 @@
 #include "DialectWrapper.h"
-#include "mlir/IR/MLIRContext.h"
+#include "MLIRGenerator.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/MLIRContext.h"
 #include <iostream>
 
-int main() {
+#include "ASTParser.h"
+
+using namespace std;
+
+int main(int argc, char **argv) {
     mlir::MLIRContext context;
     context.getOrLoadDialect<cicero_compiler::dialect::CiceroDialect>();
 
-    mlir::OpBuilder builder(&context);
-    mlir::ModuleOp module = mlir::ModuleOp::create(builder.getUnknownLoc());
+    if (argc != 2) {
+        cout << "Usage: cicero <regex_file>" << endl;
+        return -1;
+    }
 
-    builder.setInsertionPointToStart(module.getBody());
+    auto regexAST = RegexParser::parseRegexFromFile(argv[1]);
 
-    builder.create<cicero_compiler::dialect::AcceptOp>(builder.getUnknownLoc());
-    builder.create<cicero_compiler::dialect::AcceptPartialOp>(builder.getUnknownLoc());
+    auto module =
+        cicero_compiler::MLIRGenerator(context).mlirGen(move(regexAST));
 
     module.dump();
     return 0;

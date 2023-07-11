@@ -17,5 +17,14 @@ void CiceroDialect::initialize() {
       >();
 }
 
+#include <iostream>
+LogicalResult JumpOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
+  if(nullptr != symbolTable.lookupNearestSymbolFrom(getOperation(), getTargetAttrName())) {
+    return success();
+  } else {
+    return failure();
+  }
+}
+
 #define GET_OP_CLASSES
 #include "Ops.cpp.inc"

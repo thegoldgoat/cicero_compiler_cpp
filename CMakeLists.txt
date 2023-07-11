@@ -29,12 +29,14 @@ add_subdirectory(src/mlir-dialect)
 # Include generated dialect headers
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/mlir-dialect)
 include_directories(include)
+include_directories(Parser/include)
 
 add_executable(
   main
   ${CMAKE_CURRENT_BINARY_DIR}/src/mlir-dialect/Dialect.cpp.inc
   src/main.cpp
   src/mlir-dialect/DialectWrapper.cpp
+  src/MLIRGenerator.cpp
 )
 
 add_dependencies(
@@ -46,6 +48,7 @@ link_directories(${LLVM_BUILD_LIBRARY_DIR})
 
 target_link_libraries(main
   PRIVATE
+    RegexParser
     MLIRAnalysis
     MLIRIR
     MLIRParser
