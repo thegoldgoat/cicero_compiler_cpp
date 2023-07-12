@@ -68,7 +68,7 @@ def MatchCharOp : Cicero_Op<"match_char"> {
         Matches a specific character given as argument, advances the input by one character.
     }];
 
-    let arguments = (ins AnyType:$targetChar);
+    let arguments = (ins I8Attr:$targetChar);
 }
 
 def NotMatchCharOp : Cicero_Op<"not_match_char"> {
@@ -78,7 +78,7 @@ def NotMatchCharOp : Cicero_Op<"not_match_char"> {
         Complementary to match_char.
     }];
 
-    let arguments = (ins AnyType:$targetChar);
+    let arguments = (ins I8Attr:$targetChar);
 }
 
 def PlaceholderOp : Cicero_Op<"placeholder", [Symbol]> {

@@ -46,6 +46,8 @@ class Char : public Atom {
   public:
     Char(char c) : Atom(string("Char: ") + c), c(c) {}
 
+    char getChar() const { return c; }
+
   private:
     char c;
 };
@@ -57,6 +59,8 @@ class SubRegex : public Atom {
 
     string toDotty() const override;
 
+    RegExp &getRegExp() const { return *regExp; }
+
   private:
     unique_ptr<RegExp> regExp;
 };
@@ -65,6 +69,8 @@ class Group : public Atom {
   public:
     Group(vector<bool> &&charsToMatch)
         : Atom("Group"), charsToMatch(move(charsToMatch)) {}
+
+    const vector<bool> &getCharsToMatch() const { return charsToMatch; }
 
   private:
     vector<bool> charsToMatch;

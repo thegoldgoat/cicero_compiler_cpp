@@ -13,12 +13,18 @@ class MLIRGenerator {
     mlir::ModuleOp mlirGen(std::unique_ptr<RegexParser::AST::RegExp> regExp,
                            bool isRoot = true);
 
+    void populateRegexBody(mlir::Block *block,
+                           const RegexParser::AST::RegExp &regExp);
+
     void populateConcatenateBody(
         mlir::Block *block,
         const RegexParser::AST::Concatenation &concatenation);
 
     void populateAtomBody(mlir::Block *block,
                           const RegexParser::AST::Atom &atom);
+
+    void pupulateGroupBody(mlir::Block *block,
+                           const RegexParser::AST::Group &group);
 
     void populateQuantifierOptionalBody(mlir::Block *block,
                               const RegexParser::AST::Atom &atom);
