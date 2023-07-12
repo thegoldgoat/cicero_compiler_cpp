@@ -50,9 +50,7 @@ void cicero_compiler::MLIRGenerator::populateRegexBody(
             builder.create<cicero_compiler::dialect::SplitOp>(
                 builder.getUnknownLoc());
 
-        // Create a new block for the concatenation body
-        auto splitBody = new mlir::Block();
-        concatenationSplit.getSplittedThread().push_back(splitBody);
+        auto splitBody = concatenationSplit.getBody();
 
         populateConcatenateBody(splitBody, *concatenation);
 
@@ -194,8 +192,7 @@ void cicero_compiler::MLIRGenerator::pupulateGroupBody(
             if (lastIndex != -1) {
                 auto split = builder.create<cicero_compiler::dialect::SplitOp>(
                     builder.getUnknownLoc());
-                auto splitBody = new mlir::Block();
-                split.getSplittedThread().push_back(splitBody);
+                auto splitBody = split.getBody();
 
                 builder.setInsertionPointToStart(splitBody);
                 matchCreator(lastIndex);
@@ -239,8 +236,7 @@ void cicero_compiler::MLIRGenerator::populateQuantifierOptionalBody(
     auto endSymbol = getNewSymbolName();
     auto split = builder.create<cicero_compiler::dialect::SplitOp>(
         builder.getUnknownLoc());
-    auto splitBody = new mlir::Block();
-    split.getSplittedThread().push_back(splitBody);
+    auto splitBody = split.getBody();
     populateAtomBody(splitBody, atom);
     builder.create<cicero_compiler::dialect::JumpOp>(builder.getUnknownLoc(),
                                                      endSymbol);
@@ -265,8 +261,7 @@ void cicero_compiler::MLIRGenerator::populateQuantifierStarBody(
         builder.getUnknownLoc());
     split.setName(splitSymbol);
 
-    auto splitBody = new mlir::Block();
-    split.getSplittedThread().push_back(splitBody);
+    auto splitBody = split.getBody();
     populateAtomBody(splitBody, atom);
 
     builder.create<cicero_compiler::dialect::JumpOp>(builder.getUnknownLoc(),

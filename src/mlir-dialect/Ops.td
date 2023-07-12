@@ -44,6 +44,20 @@ def SplitOp : Cicero_Op<"split", [Symbol]> {
     }];
 
     let regions = (region AnyRegion:$splittedThread);
+
+    let builders = [
+        OpBuilder<(ins), [{
+            // build($_builder, $_state);
+            $_state.addRegion();
+            $_state.regions[0]->push_back(new Block());
+        }]>
+    ];
+
+    let extraClassDeclaration = [{
+        mlir::Block *getBody() {
+            return &getSplittedThread().getBlocks().front();
+        }
+    }];
 }
 
 def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
