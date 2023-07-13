@@ -21,7 +21,7 @@ class Cicero_Op<string mnemonic, list<Trait> traits = []> : Op<Cicero_Dialect, m
 
 // *** Operation definitions
 
-def AcceptOp : Cicero_Op<"accept", [Symbol]> {
+def AcceptOp : Cicero_Op<"accept"> {
     let summary = "Accepts the input only at the end of string";
     let description = [{
         If we are at the end of the string, then the input is accepted, otherwise thread is killed.
@@ -35,7 +35,7 @@ def AcceptPartialOp : Cicero_Op<"accept_partial"> {
     }];
 }
 
-def SplitOp : Cicero_Op<"split", [Symbol]> {
+def SplitOp : Cicero_Op<"split", [Symbol, SymbolTable]> {
     let summary = "Splits the thread of execution into two";
     let description = [{
         The thread is split into two threads:
@@ -57,10 +57,12 @@ def SplitOp : Cicero_Op<"split", [Symbol]> {
         mlir::Block *getBody() {
             return &getSplittedThread().getBlocks().front();
         }
+
+        bool isOptionalSymbol() { return true; }
     }];
 }
 
-def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
+def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>, Terminator]> {
     let summary = "Unconditionally jumps to argument";
     let description = [{
         The thread continues at the instruction specified by the argument as a symbol reference.
@@ -100,6 +102,8 @@ def PlaceholderOp : Cicero_Op<"placeholder", [Symbol]> {
     let description = [{
         Placeholder operation, only used internally by the compiler to represent jump/split targets.
     }];
+
+    let hasCanonicalizer = 1;
 }
 
 #endif // CICERO_DIALECT_H

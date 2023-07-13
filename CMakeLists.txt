@@ -37,6 +37,7 @@ add_executable(
   src/main.cpp
   src/mlir-dialect/DialectWrapper.cpp
   src/MLIRGenerator.cpp
+  src/Passes.cpp
 )
 
 add_dependencies(

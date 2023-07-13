@@ -3,26 +3,34 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/Verifier.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/Passes.h"
 #include <fstream>
 #include <iostream>
 
 #include "ASTParser.h"
 
 using namespace std;
+namespace cl = llvm::cl;
+
+static cl::opt<std::string> inputFilename(cl::Positional, cl::Required,
+                                          cl::desc("<input file>"),
+                                          cl::value_desc("filename"));
 
 int main(int argc, char **argv) {
+
+    mlir::registerPassManagerCLOptions();
+
+    cl::ParseCommandLineOptions(argc, argv, "cicero compiler\n");
+
     mlir::MLIRContext context;
     context.getOrLoadDialect<cicero_compiler::dialect::CiceroDialect>();
 
-    if (argc != 2) {
-        cout << "Usage: cicero <regex_file>" << endl;
-        return -1;
-    }
-
     // Open the file and print to output
-    ifstream regexFile(argv[1]);
+    ifstream regexFile(inputFilename);
     if (!regexFile.is_open()) {
-        cout << "Error opening file: " << argv[1] << endl;
+        cerr << "Error opening file: " << inputFilename << endl;
         return -1;
     }
 
@@ -34,17 +42,41 @@ int main(int argc, char **argv) {
     }
     cout << "--- End of file content ---" << endl;
 
-    auto regexAST = RegexParser::parseRegexFromFile(argv[1]);
+    auto regexAST = RegexParser::parseRegexFromFile(inputFilename);
 
     if (!regexAST) {
-        cout << "Error parsing regex? Maybe the file does not exists or it is "
+        cerr << "Error parsing regex? Maybe the file does not exists or it is "
                 "incorrect?"
              << endl;
         return -1;
     }
 
+    context.enableMultithreading(false);
+
     auto module =
         cicero_compiler::MLIRGenerator(context).mlirGen(move(regexAST));
+
+
+    if (mlir::failed(mlir::verify(module))) {
+        module.print(llvm::outs());
+        module.emitError("module verification error");
+        return -1;
+    }
+
+    mlir::PassManager pm(&context);
+
+    pm.addPass(mlir::createCanonicalizerPass());
+
+    // pm.addNestedPass<cicero_compiler::dialect::PlaceholderOp>(
+    //     mlir::createCanonicalizerPass());
+
+    pm.enableStatistics(mlir::PassDisplayMode::Pipeline);
+    pm.enableCrashReproducerGeneration("./reproducer.mlir", false);
+    if (mlir::failed(pm.run(module))) {
+        module.print(llvm::outs());
+        cerr << "Error running canonicalizer pass" << endl;
+        return -1;
+    }
 
     module.print(llvm::outs());
     return 0;

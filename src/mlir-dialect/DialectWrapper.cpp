@@ -11,19 +11,34 @@ using namespace cicero_compiler::dialect;
 #include "Dialect.cpp.inc"
 
 void CiceroDialect::initialize() {
-  addOperations<
+    addOperations<
 #define GET_OP_LIST
 #include "Ops.cpp.inc"
-      >();
+        >();
 }
 
-#include <iostream>
+LogicalResult myLookup(SymbolTableCollection &symbolTable, Operation *op,
+                       FlatSymbolRefAttr &symbol) {
+    while (op && !op->hasTrait<OpTrait::SymbolTable>()) {
+        op = op->getParentOp();
+    }
+
+    if (!op) {
+        return failure();
+    }
+
+    if (symbolTable.lookupSymbolIn(op, symbol)) {
+        return success();
+    } else {
+        return myLookup(symbolTable, op->getParentOp(), symbol);
+    }
+}
+
 LogicalResult JumpOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
-  if(nullptr != symbolTable.lookupNearestSymbolFrom(getOperation(), getTargetAttrName())) {
-    return success();
-  } else {
-    return failure();
-  }
+    auto symbolName = getTargetAttr().getValue().str();
+
+    auto symbol = getTargetAttr();
+    return myLookup(symbolTable, getOperation(), symbol);
 }
 
 #define GET_OP_CLASSES
