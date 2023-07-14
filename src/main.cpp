@@ -3,6 +3,7 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/Verifier.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
@@ -14,24 +15,23 @@
 using namespace std;
 namespace cl = llvm::cl;
 
-static cl::opt<std::string> inputFilename(cl::Positional, cl::Required,
+static cl::opt<std::string> inputFilename(cl::Positional, cl::Optional,
                                           cl::desc("<input file>"),
                                           cl::value_desc("filename"));
 
-int main(int argc, char **argv) {
+unique_ptr<RegexParser::AST::RegExp> getAST() {
 
-    mlir::registerPassManagerCLOptions();
+    if (inputFilename.getNumOccurrences() == 0) {
+        string regex;
+        cout << "Enter regex: ";
+        cin >> regex;
+        return RegexParser::parseRegexFromString(regex);
+    }
 
-    cl::ParseCommandLineOptions(argc, argv, "cicero compiler\n");
-
-    mlir::MLIRContext context;
-    context.getOrLoadDialect<cicero_compiler::dialect::CiceroDialect>();
-
-    // Open the file and print to output
     ifstream regexFile(inputFilename);
     if (!regexFile.is_open()) {
         cerr << "Error opening file: " << inputFilename << endl;
-        return -1;
+        return nullptr;
     }
 
     cout << "--- Regex file content  ---" << endl;
@@ -42,20 +42,27 @@ int main(int argc, char **argv) {
     }
     cout << "--- End of file content ---" << endl;
 
-    auto regexAST = RegexParser::parseRegexFromFile(inputFilename);
+    return RegexParser::parseRegexFromFile(inputFilename);
+}
+
+int main(int argc, char **argv) {
+    mlir::registerPassManagerCLOptions();
+    cl::ParseCommandLineOptions(argc, argv, "cicero compiler\n");
+
+    auto regexAST = getAST();
 
     if (!regexAST) {
-        cerr << "Error parsing regex? Maybe the file does not exists or it is "
-                "incorrect?"
-             << endl;
+        cerr << "Error parsing regex?" << endl;
         return -1;
     }
+
+    mlir::MLIRContext context;
+    context.getOrLoadDialect<cicero_compiler::dialect::CiceroDialect>();
 
     context.enableMultithreading(false);
 
     auto module =
         cicero_compiler::MLIRGenerator(context).mlirGen(move(regexAST));
-
 
     if (mlir::failed(mlir::verify(module))) {
         module.print(llvm::outs());
