@@ -19,16 +19,17 @@ struct FlattenSplit : public mlir::OpRewritePattern<SplitOp> {
         std::string splitTarget = "FLATTEN_" + std::to_string(symbolCounter++);
 
         rewriter.setInsertionPointToEnd(op.getOperation()->getBlock());
-        auto placeholder = rewriter.create<PlaceholderOp>(op.getLoc());
-        placeholder.setName(splitTarget);
+        rewriter.create<PlaceholderOp>(op.getLoc(), splitTarget);
 
         rewriter.mergeBlocks(op.getBody(), op.getOperation()->getBlock());
+        rewriter.create<JumpOp>(op.getLoc(), op.getSplitReturnAttr());
 
         rewriter.setInsertionPointAfter(op.getOperation());
-        rewriter.replaceOpWithNewOp<FlatSplitOp>(op.getOperation(),
-                                                 splitTarget);
+        auto flatsplitOp = rewriter.replaceOpWithNewOp<FlatSplitOp>(
+            op.getOperation(), splitTarget);
+        flatsplitOp.setName(op.getNameAttr());
 
-        return mlir::failure();
+        return mlir::success();
     }
 };
 

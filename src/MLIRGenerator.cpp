@@ -3,7 +3,7 @@
 using namespace std;
 
 mlir::ModuleOp cicero_compiler::MLIRGenerator::mlirGen(
-    unique_ptr<RegexParser::AST::RegExp> regExp, bool isRoot) {
+    unique_ptr<RegexParser::AST::RegExp> regExp) {
     auto module = mlir::ModuleOp::create(builder.getUnknownLoc());
 
     populateRegexBody(module.getBody(), *regExp);
@@ -48,21 +48,15 @@ void cicero_compiler::MLIRGenerator::populateRegexBody(
 
         auto concatenationSplit =
             builder.create<cicero_compiler::dialect::SplitOp>(
-                builder.getUnknownLoc());
+                builder.getUnknownLoc(), endSymbol);
 
-        auto splitBody = concatenationSplit.getBody();
-
-        populateConcatenateBody(splitBody, *concatenation);
-
-        builder.create<cicero_compiler::dialect::JumpOp>(
-            builder.getUnknownLoc(), endSymbol);
+        populateConcatenateBody(concatenationSplit.getBody(), *concatenation);
     }
 
     populateConcatenateBody(block, *concatenations.back());
 
-    auto end = builder.create<cicero_compiler::dialect::PlaceholderOp>(
-        builder.getUnknownLoc());
-    end.setName(endSymbol);
+    builder.create<cicero_compiler::dialect::PlaceholderOp>(
+        builder.getUnknownLoc(), endSymbol);
 }
 
 void cicero_compiler::MLIRGenerator::populateConcatenateBody(
@@ -191,13 +185,10 @@ void cicero_compiler::MLIRGenerator::pupulateGroupBody(
         if (charsToMatch[i] != flippedGroup) {
             if (lastIndex != -1) {
                 auto split = builder.create<cicero_compiler::dialect::SplitOp>(
-                    builder.getUnknownLoc());
-                auto splitBody = split.getBody();
-
-                builder.setInsertionPointToStart(splitBody);
-                matchCreator(lastIndex);
-                builder.create<cicero_compiler::dialect::JumpOp>(
                     builder.getUnknownLoc(), endSymbol);
+
+                builder.setInsertionPointToStart(split.getBody());
+                matchCreator(lastIndex);
 
                 builder.setInsertionPointAfter(split);
             }
@@ -215,10 +206,8 @@ void cicero_compiler::MLIRGenerator::pupulateGroupBody(
     // Match (or not match) the last char
     matchCreator(lastIndex);
 
-    builder
-        .create<cicero_compiler::dialect::PlaceholderOp>(
-            builder.getUnknownLoc())
-        .setName(endSymbol);
+    builder.create<cicero_compiler::dialect::PlaceholderOp>(
+        builder.getUnknownLoc(), endSymbol);
 
     return;
 }
@@ -234,16 +223,15 @@ void cicero_compiler::MLIRGenerator::populateQuantifierOptionalBody(
         -> builderCursor
      */
     auto endSymbol = getNewSymbolName();
+
     auto split = builder.create<cicero_compiler::dialect::SplitOp>(
-        builder.getUnknownLoc());
-    auto splitBody = split.getBody();
-    populateAtomBody(splitBody, atom);
-    builder.create<cicero_compiler::dialect::JumpOp>(builder.getUnknownLoc(),
-                                                     endSymbol);
+        builder.getUnknownLoc(), endSymbol);
+
+    populateAtomBody(split.getBody(), atom);
+
     builder.setInsertionPointAfter(split);
-    auto placeholder = builder.create<cicero_compiler::dialect::PlaceholderOp>(
-        builder.getUnknownLoc());
-    placeholder.setName(endSymbol);
+    builder.create<cicero_compiler::dialect::PlaceholderOp>(
+        builder.getUnknownLoc(), endSymbol);
 }
 
 void cicero_compiler::MLIRGenerator::populateQuantifierStarBody(
@@ -257,15 +245,15 @@ void cicero_compiler::MLIRGenerator::populateQuantifierStarBody(
     */
     auto splitSymbol = getNewSymbolName();
 
+    // Note that in this particular case, the split has the same symbol
+    // as the splitReturn attribute. This is because at the end of the body
+    // we want to jump back to the split itself.
     auto split = builder.create<cicero_compiler::dialect::SplitOp>(
-        builder.getUnknownLoc());
+        builder.getUnknownLoc(), splitSymbol);
     split.setName(splitSymbol);
 
     auto splitBody = split.getBody();
     populateAtomBody(splitBody, atom);
-
-    builder.create<cicero_compiler::dialect::JumpOp>(builder.getUnknownLoc(),
-                                                     splitSymbol);
 
     builder.setInsertionPointAfter(split);
 }

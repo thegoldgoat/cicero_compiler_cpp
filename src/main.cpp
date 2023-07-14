@@ -15,10 +15,9 @@
 using namespace std;
 namespace cl = llvm::cl;
 
-static cl::opt<std::string> inputRegex(cl::Optional,
-                                          "regex",
-                                          cl::desc("<input regex>"),
-                                          cl::value_desc("regex"));
+static cl::opt<std::string> inputRegex(cl::Optional, "regex",
+                                       cl::desc("<input regex>"),
+                                       cl::value_desc("regex"));
 
 static cl::opt<std::string> inputFilename(cl::Positional, cl::Optional,
                                           cl::desc("<input file>"),
@@ -82,6 +81,7 @@ int main(int argc, char **argv) {
     }
 
     mlir::PassManager pm(&context);
+    applyPassManagerCLOptions(pm);
 
     pm.addPass(mlir::createCanonicalizerPass());
 

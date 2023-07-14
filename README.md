@@ -26,118 +26,64 @@ cmake --build .
 
 ## Dialect Design
 
-```mlir
-
-// Example: ab|cd
-
-module {
-    "cicero.regionSplit"() ({
-        // Match a
-        "cicero.match_char"() {targetChar = 97 : i8} : () -> ()
-        // Match b
-        "cicero.match_char"() {targetChar = 98 : i8} : () -> ()
-    }) { splitReturn = "SPLIT0_RETURN"} : () -> ()
-
-    // Match c
-    "cicero.match_char"() {targetChar = 99 : i8} : () -> ()
-    // Match d
-    "cicero.match_char"() {targetChar = 100 : i8} : () -> ()
-
-    "cicero.placeholder"() {sym_name = "SPLIT0_RETURN"} : () -> ()
-    "cicero.accept"() : () -> ()
-
-    "cicero.placeholder"() {sym_name = "CICERO_END"} : () -> ()
-}
-
-// Pass to flatten the `regionSplit` into a `targetSplit`
-
-module {
-    // Splits execution between next instruction (match c) and the one
-    // with "SPLIT0_TARGET" symbol
-    "cicero.targetSplit"() {splitTarget = "SPLIT0_TARGET"} : () -> ()
-
-    // Match c
-    "cicero.match_char"() {targetChar = 99 : i8} : () -> ()
-    // Match d
-    "cicero.match_char"() {targetChar = 100 : i8} : () -> ()
-
-    "cicero.placeholder"() {sym_name = "SPLIT0_TARGET"} : () -> ()
-    "cicero.accept"() {} : () -> ()
-    "cicero.placeholder"() {sym_name = "CICERO_END"} : () -> ()
-
-    //// This is the body of SPLIT0
-    // Match a
-    "cicero.match_char"() {sym_name = "SPLIT0_TARGET", targetChar = 97 : i8} : () -> ()
-    // Match b
-    "cicero.match_char"() {targetChar = 98 : i8} : () -> ()
-    // Return
-    "cicero.jump"() {target = "SPLIT0_RETURN"} : () -> ()
-    /// End body of SPLIT0
-
-    "cicero.placeholder"() {sym_name = "CICERO_END"} : () -> ()
-}
-```
-
-## new dialect design
-
+Here is an example before and after the canonicalization of the `cicero.split` operation, which
+gets replaced by a `cicero.flat_split` operation. The `cicero.flat_split` operation has a reference 
+to the actual body of the split, which originally was the body of the `cicero.split` operation.
 
 ```mlir
 
-// Example: (ab|cd)*
+// Example: (ab|cd)|ef
 
-"builtin.module"() ({
+// === Module before canonicalization ===
+
+module {
   "cicero.split"() ({
     "cicero.split"() ({
+      // Match a
       "cicero.match_char"() {targetChar = 97 : i8} : () -> ()
+      // Match b
       "cicero.match_char"() {targetChar = 98 : i8} : () -> ()
       "cicero.jump"() {target = @S1} : () -> ()
-    }) : () -> ()
+    }) {splitReturn = @S1} : () -> ()
+    // Match c
     "cicero.match_char"() {targetChar = 99 : i8} : () -> ()
+    // Match d
     "cicero.match_char"() {targetChar = 100 : i8} : () -> ()
     "cicero.placeholder"() {sym_name = "S1"} : () -> ()
     "cicero.jump"() {target = @S0} : () -> ()
-  }) {sym_name = "S0"} : () -> ()
+  }) {splitReturn = @S0} : () -> ()
+  // Match e
+  "cicero.match_char"() {targetChar = 101 : i8} : () -> ()
+  // Match f
+  "cicero.match_char"() {targetChar = 102 : i8} : () -> ()
+  "cicero.placeholder"() {sym_name = "S0"} : () -> ()
   "cicero.accept"() : () -> ()
-}) : () -> ()
+}
 
-// Flatten the (inner) split
+// === Module after canonicalization ===
 
-"builtin.module"() ({
-  "cicero.split"() ({
-    "cicero.flatsplit"() {splitTarget = "S2"} : () -> ()
-    "cicero.match_char"() {targetChar = 99 : i8} : () -> ()
-    "cicero.match_char"() {targetChar = 100 : i8} : () -> ()
-    "cicero.placeholder"() {sym_name = "S1"} : () -> ()
-    "cicero.jump"() {target = @S0} : () -> ()
-    // Body of inner split
-    "cicero.placeholder"() {sym_name = "S2"} : () -> ()
-    "cicero.match_char"() {targetChar = 97 : i8} : () -> ()
-    "cicero.match_char"() {targetChar = 98 : i8} : () -> ()
-    "cicero.jump"() {target = @S1} : () -> ()
-    // End body of inner split
-  }) {sym_name = "S0"} : () -> ()
+module {
+  "cicero.flat_split"() {splitTarget = @FLATTEN_0} : () -> ()
+  // Match e
+  "cicero.match_char"() {targetChar = 101 : i8} : () -> ()
+  // Match f
+  "cicero.match_char"() {targetChar = 102 : i8} : () -> ()
+  "cicero.placeholder"() {sym_name = "S0"} : () -> ()
   "cicero.accept"() : () -> ()
-}) : () -> ()
-
-// Flatten the outer split
-
-"builtin.module"() ({
-  "cicero.flatsplit"() {splitTarget = "S3"} : () -> ()
-  "cicero.accept"() : () -> ()
-  // Body of outer split
-  "cicero.placeholder"() {sym_name = "S3"} : () -> ()
-  "cicero.flatsplit"() {splitTarget = "S2"} : () -> ()
+  "cicero.placeholder"() {sym_name = "FLATTEN_0"} : () -> ()
+  "cicero.flat_split"() {splitTarget = @FLATTEN_1} : () -> ()
+  // Match c
   "cicero.match_char"() {targetChar = 99 : i8} : () -> ()
+  // Match d
   "cicero.match_char"() {targetChar = 100 : i8} : () -> ()
   "cicero.placeholder"() {sym_name = "S1"} : () -> ()
   "cicero.jump"() {target = @S0} : () -> ()
-  // Body of inner split
-  "cicero.placeholder"() {sym_name = "S2"} : () -> ()
+  "cicero.placeholder"() {sym_name = "FLATTEN_1"} : () -> ()
+  // Match a
   "cicero.match_char"() {targetChar = 97 : i8} : () -> ()
+  // Match b
   "cicero.match_char"() {targetChar = 98 : i8} : () -> ()
   "cicero.jump"() {target = @S1} : () -> ()
-  // End body of inner split
-  // End body of outer split
-}) : () -> ()
+}
 
 ```

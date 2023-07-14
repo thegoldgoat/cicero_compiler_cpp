@@ -35,10 +35,39 @@ LogicalResult myLookup(SymbolTableCollection &symbolTable, Operation *op,
 }
 
 LogicalResult JumpOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
-    auto symbolName = getTargetAttr().getValue().str();
-
     auto symbol = getTargetAttr();
-    return myLookup(symbolTable, getOperation(), symbol);
+    auto verifyResult = myLookup(symbolTable, getOperation(), symbol);
+    if (failed(verifyResult)) {
+        getOperation()->emitError(
+            "Verification of JumpOp failed: jump target symbol = \"@" +
+            symbol.getValue().str() + "\" not found.");
+    }
+
+    return verifyResult;
+}
+
+LogicalResult SplitOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
+    auto symbol = getSplitReturnAttr();
+    auto verifyResult = myLookup(symbolTable, getOperation(), symbol);
+    if (failed(verifyResult)) {
+        getOperation()->emitError(
+            "Verification of SplitOp failed: return symbol = \"@" +
+            symbol.getValue().str() + "\" not found.");
+    }
+
+    return verifyResult;
+}
+
+LogicalResult FlatSplitOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
+    auto symbol = getSplitTargetAttr();
+    auto verifyResult = myLookup(symbolTable, getOperation(), symbol);
+    if (failed(verifyResult)) {
+        getOperation()->emitError(
+            "Verification of FlatSplitOp failed: split target symbol = \"@" +
+            symbol.getValue().str() + "\" not found.");
+    }
+
+    return verifyResult;
 }
 
 #define GET_OP_CLASSES
