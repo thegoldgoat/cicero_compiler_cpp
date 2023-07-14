@@ -39,8 +39,8 @@ def SplitOp : Cicero_Op<"split", [Symbol, SymbolTable]> {
     let summary = "Splits the thread of execution into two";
     let description = [{
         The thread is split into two threads:
-        - one continues at the next instruction
-        - the other one continues at the split body (its entry block)
+        - one continues at the next operation
+        - the other one continues at the **split body** (its entry block)
     }];
 
     let regions = (region AnyRegion:$splittedThread);
@@ -60,6 +60,19 @@ def SplitOp : Cicero_Op<"split", [Symbol, SymbolTable]> {
 
         bool isOptionalSymbol() { return true; }
     }];
+
+    let hasCanonicalizer = 1;
+}
+
+def FlatSplitOp : Cicero_Op<"flat_split"> {
+    let summary = "Splits the thread of execution into two";
+    let description = [{
+        The thread is split into two threads:
+        - one continues at the next operation
+        - the other one continues at operation referenced by the splitTarget attribute
+    }];
+
+    let arguments = (ins FlatSymbolRefAttr:$splitTarget);
 }
 
 def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>, Terminator]> {
@@ -102,8 +115,6 @@ def PlaceholderOp : Cicero_Op<"placeholder", [Symbol]> {
     let description = [{
         Placeholder operation, only used internally by the compiler to represent jump/split targets.
     }];
-
-    let hasCanonicalizer = 1;
 }
 
 #endif // CICERO_DIALECT_H
