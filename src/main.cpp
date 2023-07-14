@@ -15,6 +15,10 @@
 using namespace std;
 namespace cl = llvm::cl;
 
+static cl::opt<std::string> inputRegex(cl::Optional, "regex",
+                                       cl::desc("<input regex>"),
+                                       cl::value_desc("regex"));
+
 static cl::opt<std::string> inputFilename(cl::Positional, cl::Optional,
                                           cl::desc("<input file>"),
                                           cl::value_desc("filename"));
@@ -23,8 +27,14 @@ unique_ptr<RegexParser::AST::RegExp> getAST() {
 
     if (inputFilename.getNumOccurrences() == 0) {
         string regex;
+
+        if (inputRegex.getNumOccurrences() > 0) {
+            regex = inputRegex;
+            return RegexParser::parseRegexFromString(regex);
+        }
         cout << "Enter regex: ";
         cin >> regex;
+        cout << endl;
         return RegexParser::parseRegexFromString(regex);
     }
 
@@ -71,14 +81,10 @@ int main(int argc, char **argv) {
     }
 
     mlir::PassManager pm(&context);
+    applyPassManagerCLOptions(pm);
 
     pm.addPass(mlir::createCanonicalizerPass());
 
-    // pm.addNestedPass<cicero_compiler::dialect::PlaceholderOp>(
-    //     mlir::createCanonicalizerPass());
-
-    pm.enableStatistics(mlir::PassDisplayMode::Pipeline);
-    pm.enableCrashReproducerGeneration("./reproducer.mlir", false);
     if (mlir::failed(pm.run(module))) {
         module.print(llvm::outs());
         cerr << "Error running canonicalizer pass" << endl;

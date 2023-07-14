@@ -10,8 +10,7 @@ class MLIRGenerator {
   public:
     MLIRGenerator(mlir::MLIRContext &context) : builder(&context){};
 
-    mlir::ModuleOp mlirGen(std::unique_ptr<RegexParser::AST::RegExp> regExp,
-                           bool isRoot = true);
+    mlir::ModuleOp mlirGen(std::unique_ptr<RegexParser::AST::RegExp> regExp);
 
     void populateRegexBody(mlir::Block *block,
                            const RegexParser::AST::RegExp &regExp);
@@ -27,16 +26,17 @@ class MLIRGenerator {
                            const RegexParser::AST::Group &group);
 
     void populateQuantifierOptionalBody(mlir::Block *block,
-                              const RegexParser::AST::Atom &atom);
+                                        const RegexParser::AST::Atom &atom);
 
     void populateQuantifierStarBody(mlir::Block *block,
-                              const RegexParser::AST::Atom &atom);
-    
-    void populateQuantifierPlusBody(mlir::Block *block, 
-                              const RegexParser::AST::Atom &atom);
+                                    const RegexParser::AST::Atom &atom);
+
+    void populateQuantifierPlusBody(mlir::Block *block,
+                                    const RegexParser::AST::Atom &atom);
 
     void populateQuantifierRangeBody(mlir::Block *block,
-                              const RegexParser::AST::Atom &atom, int min, int max);
+                                     const RegexParser::AST::Atom &atom,
+                                     int min, int max);
 
   private:
     mlir::OpBuilder builder;

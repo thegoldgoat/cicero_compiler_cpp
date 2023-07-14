@@ -35,21 +35,23 @@ def AcceptPartialOp : Cicero_Op<"accept_partial"> {
     }];
 }
 
-def SplitOp : Cicero_Op<"split", [Symbol, SymbolTable]> {
+def SplitOp : Cicero_Op<"split", [Symbol, SymbolTable, NoTerminator, DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
     let summary = "Splits the thread of execution into two";
     let description = [{
         The thread is split into two threads:
-        - one continues at the next instruction
-        - the other one continues at the split body (its entry block)
+        - one continues at the next operation
+        - the other one continues at the **split body** (its entry block), at the end of it it jumps to splitReturn
     }];
 
     let regions = (region AnyRegion:$splittedThread);
 
+    let arguments = (ins FlatSymbolRefAttr:$splitReturn);
+
     let builders = [
-        OpBuilder<(ins), [{
-            // build($_builder, $_state);
+        OpBuilder<(ins "std::string":$returnSymbol), [{
             $_state.addRegion();
             $_state.regions[0]->push_back(new Block());
+            $_state.addAttribute(getSplitReturnAttrName($_state.name), ::mlir::SymbolRefAttr::get($_builder.getContext(), returnSymbol));
         }]>
     ];
 
@@ -60,9 +62,26 @@ def SplitOp : Cicero_Op<"split", [Symbol, SymbolTable]> {
 
         bool isOptionalSymbol() { return true; }
     }];
+
+    let hasCanonicalizer = 1;
 }
 
-def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>, Terminator]> {
+def FlatSplitOp : Cicero_Op<"flat_split", [Symbol, DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
+    let summary = "Splits the thread of execution into two";
+    let description = [{
+        The thread is split into two threads:
+        - one continues at the next operation
+        - the other one continues at operation referenced by the splitTarget attribute
+    }];
+
+    let arguments = (ins FlatSymbolRefAttr:$splitTarget);
+
+    let extraClassDeclaration = [{
+        bool isOptionalSymbol() { return true; }
+    }];
+}
+
+def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
     let summary = "Unconditionally jumps to argument";
     let description = [{
         The thread continues at the instruction specified by the argument as a symbol reference.
@@ -103,7 +122,12 @@ def PlaceholderOp : Cicero_Op<"placeholder", [Symbol]> {
         Placeholder operation, only used internally by the compiler to represent jump/split targets.
     }];
 
-    let hasCanonicalizer = 1;
+    let builders = [
+        OpBuilder<(ins "std::string":$symbol), [{
+            $_state.addAttribute(SymbolTable::getSymbolAttrName(),
+                        $_builder.getStringAttr(symbol));
+        }]>
+    ];
 }
 
 #endif // CICERO_DIALECT_H

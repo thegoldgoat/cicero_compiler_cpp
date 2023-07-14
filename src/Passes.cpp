@@ -5,20 +5,35 @@
 
 using namespace cicero_compiler::dialect;
 
+unsigned int symbolCounter = 0;
 
-struct RemovePlaceholders : public mlir::OpRewritePattern<PlaceholderOp> {
+struct FlattenSplit : public mlir::OpRewritePattern<SplitOp> {
 
-    RemovePlaceholders(mlir::MLIRContext *context)
+    FlattenSplit(mlir::MLIRContext *context)
         : OpRewritePattern(context, /*benefit=*/100) {}
 
     mlir::LogicalResult
-    matchAndRewrite(PlaceholderOp op,
+    matchAndRewrite(SplitOp op,
                     mlir::PatternRewriter &rewriter) const override {
-        return mlir::LogicalResult::success();
+
+        std::string splitTarget = "FLATTEN_" + std::to_string(symbolCounter++);
+
+        rewriter.setInsertionPointToEnd(op.getOperation()->getBlock());
+        rewriter.create<PlaceholderOp>(op.getLoc(), splitTarget);
+
+        rewriter.mergeBlocks(op.getBody(), op.getOperation()->getBlock());
+        rewriter.create<JumpOp>(op.getLoc(), op.getSplitReturnAttr());
+
+        rewriter.setInsertionPointAfter(op.getOperation());
+        auto flatsplitOp = rewriter.replaceOpWithNewOp<FlatSplitOp>(
+            op.getOperation(), splitTarget);
+        flatsplitOp.setName(op.getNameAttr());
+
+        return mlir::success();
     }
 };
 
-void cicero_compiler::dialect::PlaceholderOp::getCanonicalizationPatterns(
+void cicero_compiler::dialect::SplitOp::getCanonicalizationPatterns(
     mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
-    results.add<RemovePlaceholders>(context);
+    results.add<FlattenSplit>(context);
 }
