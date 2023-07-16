@@ -15,7 +15,10 @@ def Cicero_Dialect : Dialect {
 }
 
 // Base operation definition
-class Cicero_Op<string mnemonic, list<Trait> traits = []> : Op<Cicero_Dialect, mnemonic, traits> {
+class Cicero_Op<string mnemonic, list<Trait> traits = []> : Op<Cicero_Dialect, mnemonic, !listconcat(traits, [Symbol])> {
+    let extraClassDeclaration = [{
+        bool isOptionalSymbol() { return true; }
+    }];
 }
 
 
@@ -35,7 +38,7 @@ def AcceptPartialOp : Cicero_Op<"accept_partial"> {
     }];
 }
 
-def SplitOp : Cicero_Op<"split", [Symbol, SymbolTable, NoTerminator, DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
+def SplitOp : Cicero_Op<"split", [SymbolTable, NoTerminator, DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
     let summary = "Splits the thread of execution into two";
     let description = [{
         The thread is split into two threads:
@@ -66,7 +69,7 @@ def SplitOp : Cicero_Op<"split", [Symbol, SymbolTable, NoTerminator, DeclareOpIn
     let hasCanonicalizer = 1;
 }
 
-def FlatSplitOp : Cicero_Op<"flat_split", [Symbol, DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
+def FlatSplitOp : Cicero_Op<"flat_split", [DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
     let summary = "Splits the thread of execution into two";
     let description = [{
         The thread is split into two threads:
@@ -75,10 +78,6 @@ def FlatSplitOp : Cicero_Op<"flat_split", [Symbol, DeclareOpInterfaceMethods<Sym
     }];
 
     let arguments = (ins FlatSymbolRefAttr:$splitTarget);
-
-    let extraClassDeclaration = [{
-        bool isOptionalSymbol() { return true; }
-    }];
 }
 
 def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
@@ -116,7 +115,7 @@ def NotMatchCharOp : Cicero_Op<"not_match_char"> {
     let arguments = (ins I8Attr:$targetChar);
 }
 
-def PlaceholderOp : Cicero_Op<"placeholder", [Symbol]> {
+def PlaceholderOp : Cicero_Op<"placeholder"> {
     let summary = "Placeholder operation";
     let description = [{
         Placeholder operation, only used internally by the compiler to represent jump/split targets.
@@ -128,6 +127,12 @@ def PlaceholderOp : Cicero_Op<"placeholder", [Symbol]> {
                         $_builder.getStringAttr(symbol));
         }]>
     ];
+
+    let hasCanonicalizer = 1;
+
+    let extraClassDeclaration = [{
+        bool isOptionalSymbol() { return true; }
+    }];
 }
 
 #endif // CICERO_DIALECT_H
