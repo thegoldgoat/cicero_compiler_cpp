@@ -55,3 +55,8 @@ target_link_libraries(main
     MLIRParser
     MLIRSideEffectInterfaces
     MLIRTransforms)
+
+add_executable(
+  objdump
+  src/tool/objdump.cpp
+)
