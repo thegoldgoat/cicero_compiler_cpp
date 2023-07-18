@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
                           matchCharOp.getTargetChar(), outputFile);
         } else if (CAST_MACRO(notMatchOp, op,
                               cicero_compiler::dialect::NotMatchCharOp)) {
-            writeFunction(CiceroOpCodes::MATCH_CHAR, notMatchOp.getTargetChar(),
+            writeFunction(CiceroOpCodes::NOT_MATCH_CHAR, notMatchOp.getTargetChar(),
                           outputFile);
         } else if (CAST_MACRO(matchAnyOp, op,
                               cicero_compiler::dialect::MatchAnyOp)) {
@@ -215,7 +215,7 @@ unique_ptr<RegexParser::AST::RegExp> getAST() {
 }
 
 #define CODEGEN_SEPARATION(opCode, opData)                                     \
-    ((opCode & 0x3) << 13) | (opData & 0x1fff)
+    ((opCode & 0x7) << 13) | (opData & 0x1fff)
 
 void outputToFileBinaryFormat(uint16_t opCode, uint16_t opData,
                               ofstream &outputStream) {
@@ -225,5 +225,5 @@ void outputToFileBinaryFormat(uint16_t opCode, uint16_t opData,
 void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
                            ofstream &outputStream) {
     uint16_t toWrite = CODEGEN_SEPARATION(opCode, opData);
-    outputStream << hex << toWrite << endl;
+    outputStream << "0x" << hex << toWrite << endl;
 }
