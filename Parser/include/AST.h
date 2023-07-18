@@ -189,6 +189,37 @@ class RegExp : public Node {
     vector<unique_ptr<Concatenation>> concatenations;
 };
 
+class Root : public Node {
+  public:
+    Root(unique_ptr<RegExp> regExp, bool anyPrefix, bool anySuffix)
+        : Node("Root"), regExp(move(regExp)), anyPrefix(anyPrefix),
+          anySuffix(anySuffix) {}
+
+    RegExp &getRegExp() const { return *regExp; }
+
+    bool hasAnyPrefix() const { return anyPrefix; }
+    bool hasAnySuffix() const { return anySuffix; }
+
+    string toDotty() const override {
+        string dotty = Node::toDotty();
+        dotty += ADDR_TO_STR(this) + " -> " + ADDR_TO_STR(regExp.get()) +
+                 ";\n" + regExp->toDotty();
+        return dotty;
+    }
+
+  private:
+    unique_ptr<RegExp> regExp;
+
+    // Indicates this regular expression has an implicit ".*" prefix
+    // This is true by default, but can be set to false if the regex starts with
+    // "^"
+    bool anyPrefix;
+    // Indicates this regular expression has an implicit ".*" suffix
+    // This is true by default, but can be set to false if the regex ends with
+    // "$"
+    bool anySuffix;
+};
+
 inline string SubRegex::toDotty() const {
     return Node::toDotty() + ADDR_TO_STR(this) + " -> " +
            ADDR_TO_STR(regExp.get()) + ";\n" + regExp->toDotty();

@@ -7,7 +7,7 @@
 
 namespace RegexParser {
 
-std::unique_ptr<AST::RegExp> parseRegexFromFile(const std::string &regexPath);
-std::unique_ptr<AST::RegExp> parseRegexFromString(const std::string &regexPath);
+std::unique_ptr<AST::Root> parseRegexFromFile(const std::string &regexPath);
+std::unique_ptr<AST::Root> parseRegexFromString(const std::string &regexPath);
 
 } // namespace RegexParser

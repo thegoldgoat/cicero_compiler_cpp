@@ -9,18 +9,18 @@ using namespace std;
 
 namespace RegexParser {
 
-unique_ptr<AST::RegExp> parseRegexImpl(antlr4::ANTLRInputStream input) {
+unique_ptr<AST::Root> parseRegexImpl(antlr4::ANTLRInputStream input) {
     regexLexer lexer(&input);
     antlr4::CommonTokenStream tokens(&lexer);
 
     regexParser parser(&tokens);
 
-    regexParser::RegExpContext *regExpTree = parser.root()->regExp();
-
-    return move(RegexVisitor().visitRegExp(regExpTree));
+    auto regExpRoot = parser.root();
+    
+    return move(RegexVisitor().visitRoot(regExpRoot));
 }
 
-unique_ptr<AST::RegExp> parseRegexFromFile(const string &regexPath) {
+unique_ptr<AST::Root> parseRegexFromFile(const string &regexPath) {
 
     ifstream stream;
     stream.open(regexPath);
@@ -31,7 +31,7 @@ unique_ptr<AST::RegExp> parseRegexFromFile(const string &regexPath) {
     return parseRegexImpl(antlr4::ANTLRInputStream(stream));
 }
 
-std::unique_ptr<AST::RegExp> parseRegexFromString(const std::string &regex) {
+std::unique_ptr<AST::Root> parseRegexFromString(const std::string &regex) {
     return parseRegexImpl(antlr4::ANTLRInputStream(regex));
 }
 } // namespace RegexParser

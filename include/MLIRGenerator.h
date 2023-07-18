@@ -10,7 +10,7 @@ class MLIRGenerator {
   public:
     MLIRGenerator(mlir::MLIRContext &context) : builder(&context){};
 
-    mlir::ModuleOp mlirGen(std::unique_ptr<RegexParser::AST::RegExp> regExp);
+    mlir::ModuleOp mlirGen(std::unique_ptr<RegexParser::AST::Root> regExp);
 
     void populateRegexBody(mlir::Block *block,
                            const RegexParser::AST::RegExp &regExp);

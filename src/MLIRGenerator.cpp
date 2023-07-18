@@ -3,12 +3,25 @@
 using namespace std;
 
 mlir::ModuleOp cicero_compiler::MLIRGenerator::mlirGen(
-    unique_ptr<RegexParser::AST::RegExp> regExp) {
+    unique_ptr<RegexParser::AST::Root> regExp) {
     auto module = mlir::ModuleOp::create(builder.getUnknownLoc());
 
-    populateRegexBody(module.getBody(), *regExp);
+    if (regExp->hasAnyPrefix()) {
+        // Add a ".*" at the beginning
+        builder.setInsertionPointToEnd(module.getBody());
+        this->populateQuantifierStarBody(module.getBody(),
+                                         RegexParser::AST::AnyChar());
+    }
 
-    builder.create<cicero_compiler::dialect::AcceptOp>(builder.getUnknownLoc());
+    populateRegexBody(module.getBody(), regExp->getRegExp());
+
+    if (regExp->hasAnySuffix()) {
+        builder.create<cicero_compiler::dialect::AcceptPartialOp>(
+            builder.getUnknownLoc());
+    } else {
+        builder.create<cicero_compiler::dialect::AcceptOp>(
+            builder.getUnknownLoc());
+    }
     return module;
 }
 

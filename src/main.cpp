@@ -43,7 +43,7 @@ static cl::opt<enum CiceroBinaryOutputFormat> binaryOutputFormat(
     cl::values(clEnumValN(
         Hex, "hex", "output in hex format (one 16 bits hex value per line))")));
 
-unique_ptr<RegexParser::AST::RegExp> getAST();
+unique_ptr<RegexParser::AST::Root> getAST();
 
 #define CAST_MACRO(resultName, inputOperation, operationType)                  \
     auto resultName = mlir::dyn_cast<operationType>(inputOperation)
@@ -148,8 +148,8 @@ int main(int argc, char **argv) {
                           matchCharOp.getTargetChar(), outputFile);
         } else if (CAST_MACRO(notMatchOp, op,
                               cicero_compiler::dialect::NotMatchCharOp)) {
-            writeFunction(CiceroOpCodes::NOT_MATCH_CHAR, notMatchOp.getTargetChar(),
-                          outputFile);
+            writeFunction(CiceroOpCodes::NOT_MATCH_CHAR,
+                          notMatchOp.getTargetChar(), outputFile);
         } else if (CAST_MACRO(matchAnyOp, op,
                               cicero_compiler::dialect::MatchAnyOp)) {
             writeFunction(CiceroOpCodes::MATCH_ANY, 0, outputFile);
@@ -162,6 +162,9 @@ int main(int argc, char **argv) {
         } else if (CAST_MACRO(acceptOp, op,
                               cicero_compiler::dialect::AcceptOp)) {
             writeFunction(CiceroOpCodes::ACCEPT, 0, outputFile);
+        } else if (CAST_MACRO(acceptPartialOp, op,
+                              cicero_compiler::dialect::AcceptPartialOp)) {
+            writeFunction(CiceroOpCodes::ACCEPT_PARTIAL, 0, outputFile);
         } else if (CAST_MACRO(jumpOp, op, cicero_compiler::dialect::JumpOp)) {
             uint16_t jumpTargetIndex = symbolTable.lookup(jumpOp.getTarget());
             writeFunction(CiceroOpCodes::JUMP, jumpTargetIndex, outputFile);
@@ -177,7 +180,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-unique_ptr<RegexParser::AST::RegExp> getAST() {
+unique_ptr<RegexParser::AST::Root> getAST() {
 
     if (inputFilename.getNumOccurrences() == 0) {
         string regex;

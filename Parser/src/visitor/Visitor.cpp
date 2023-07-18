@@ -8,6 +8,12 @@
 using namespace std;
 
 namespace RegexParser {
+unique_ptr<AST::Root> RegexVisitor::visitRoot(regexParser::RootContext *ctx) {
+    auto regExp = visitRegExp(ctx->regExp());
+    bool hasPrefix = ctx->noprefix == nullptr;
+    bool hasSuffix = ctx->nosuffix == nullptr;
+    return make_unique<AST::Root>(move(regExp), hasPrefix, hasSuffix);
+}
 
 unique_ptr<AST::RegExp>
 RegexVisitor::visitRegExp(regexParser::RegExpContext *ctx) {

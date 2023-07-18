@@ -11,6 +11,8 @@ using namespace std;
 
 class RegexVisitor {
   public:
+    unique_ptr<AST::Root> visitRoot(regexParser::RootContext *ctx);
+
     unique_ptr<AST::RegExp> visitRegExp(regexParser::RegExpContext *ctx);
 
     unique_ptr<AST::Concatenation>
