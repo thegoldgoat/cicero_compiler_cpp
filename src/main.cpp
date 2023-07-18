@@ -30,7 +30,6 @@ static cl::opt<std::string> outputFilename(cl::Optional,
                                            cl::desc("<output file>"), "o",
                                            cl::value_desc("filename"));
 
-enum CiceroAction { None, DumpAST, DumpMLIR, DumpCompiled };
 static cl::opt<enum CiceroAction>
     emitAction("emit", cl::desc("Select the kind of output desired"),
                cl::values(clEnumValN(DumpAST, "ast", "output the AST dump")),
@@ -38,14 +37,21 @@ static cl::opt<enum CiceroAction>
                cl::values(clEnumValN(DumpCompiled, "compiled",
                                      "output the compiled artifact")));
 
+static cl::opt<enum CiceroBinaryOutputFormat> binaryOutputFormat(
+    "binary-format", cl::desc("Select the kind of binary output desired"),
+    cl::values(clEnumValN(Binary, "binary", "output in binary format")),
+    cl::values(clEnumValN(
+        Hex, "hex", "output in hex format (one 16 bits hex value per line))")));
+
 unique_ptr<RegexParser::AST::RegExp> getAST();
 
 #define CAST_MACRO(resultName, inputOperation, operationType)                  \
     auto resultName = mlir::dyn_cast<operationType>(inputOperation)
 
-#define WRITE_TO_OUT_MACRO(opCode, opData, outputStream)                       \
-    uint16_t toWrite = ((opCode & 0x3) << 13) | (opData & 0x1fff);             \
-    outputStream.write(reinterpret_cast<char *>(&toWrite), sizeof toWrite)
+void outputToFileBinaryFormat(uint16_t opCode, uint16_t opData,
+                              ofstream &outputStream);
+void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
+                           ofstream &outputStream);
 
 int main(int argc, char **argv) {
     mlir::registerPassManagerCLOptions();
@@ -65,7 +71,7 @@ int main(int argc, char **argv) {
             return -1;
         }
 
-        outputFile = ofstream(outputFilename, ios::binary);
+        outputFile = ofstream(outputFilename);
 
         if (!outputFile.is_open()) {
             cerr << "Error opening output file: " << outputFilename << endl;
@@ -130,34 +136,35 @@ int main(int argc, char **argv) {
         });
 
     operationIndex = 0;
-    module.getBody()->walk([&outputFile, &symbolTable,
+
+    auto writeFunction = binaryOutputFormat == Hex ? outputToFileHexFormat
+                                                   : outputToFileBinaryFormat;
+    module.getBody()->walk([&writeFunction, &outputFile, &symbolTable,
                             &operationIndex](mlir::Operation *op) {
         // Try to cast to concrete operations
         if (CAST_MACRO(matchCharOp, op,
                        cicero_compiler::dialect::MatchCharOp)) {
-            WRITE_TO_OUT_MACRO(CiceroOpCodes::MATCH_CHAR,
-                               matchCharOp.getTargetChar(), outputFile);
+            writeFunction(CiceroOpCodes::MATCH_CHAR,
+                          matchCharOp.getTargetChar(), outputFile);
         } else if (CAST_MACRO(notMatchOp, op,
                               cicero_compiler::dialect::NotMatchCharOp)) {
-            WRITE_TO_OUT_MACRO(CiceroOpCodes::MATCH_CHAR,
-                               notMatchOp.getTargetChar(), outputFile);
+            writeFunction(CiceroOpCodes::MATCH_CHAR, notMatchOp.getTargetChar(),
+                          outputFile);
         } else if (CAST_MACRO(matchAnyOp, op,
                               cicero_compiler::dialect::MatchAnyOp)) {
-            WRITE_TO_OUT_MACRO(CiceroOpCodes::MATCH_ANY, 0, outputFile);
+            writeFunction(CiceroOpCodes::MATCH_ANY, 0, outputFile);
         } else if (CAST_MACRO(flatSplitOp, op,
                               cicero_compiler::dialect::FlatSplitOp)) {
             uint16_t splitTargetIndex =
                 symbolTable.lookup(flatSplitOp.getSplitTarget());
 
-            WRITE_TO_OUT_MACRO(CiceroOpCodes::SPLIT, splitTargetIndex,
-                               outputFile);
+            writeFunction(CiceroOpCodes::SPLIT, splitTargetIndex, outputFile);
         } else if (CAST_MACRO(acceptOp, op,
                               cicero_compiler::dialect::AcceptOp)) {
-            WRITE_TO_OUT_MACRO(CiceroOpCodes::ACCEPT, 0, outputFile);
+            writeFunction(CiceroOpCodes::ACCEPT, 0, outputFile);
         } else if (CAST_MACRO(jumpOp, op, cicero_compiler::dialect::JumpOp)) {
             uint16_t jumpTargetIndex = symbolTable.lookup(jumpOp.getTarget());
-            WRITE_TO_OUT_MACRO(CiceroOpCodes::JUMP, jumpTargetIndex,
-                               outputFile);
+            writeFunction(CiceroOpCodes::JUMP, jumpTargetIndex, outputFile);
         } else {
             throw std::runtime_error(
                 "Code generation for operation not implemented: " +
@@ -205,4 +212,18 @@ unique_ptr<RegexParser::AST::RegExp> getAST() {
     cout << "--- End of file content ---" << endl;
 
     return RegexParser::parseRegexFromFile(inputFilename);
+}
+
+#define CODEGEN_SEPARATION(opCode, opData)                                     \
+    ((opCode & 0x3) << 13) | (opData & 0x1fff)
+
+void outputToFileBinaryFormat(uint16_t opCode, uint16_t opData,
+                              ofstream &outputStream) {
+    uint16_t toWrite = CODEGEN_SEPARATION(opCode, opData);
+    outputStream.write(reinterpret_cast<char *>(&toWrite), sizeof(toWrite));
+}
+void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
+                           ofstream &outputStream) {
+    uint16_t toWrite = CODEGEN_SEPARATION(opCode, opData);
+    outputStream << hex << toWrite << endl;
 }

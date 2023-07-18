@@ -10,3 +10,7 @@ enum CiceroOpCodes {
     ACCEPT_PARTIAL = 6,
     NOT_MATCH_CHAR = 7,
 };
+
+enum CiceroBinaryOutputFormat { Binary, Hex };
+
+enum CiceroAction { None, DumpAST, DumpMLIR, DumpCompiled };
