@@ -87,6 +87,8 @@ def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>
     }];
 
     let arguments = (ins FlatSymbolRefAttr:$target);
+
+    let hasCanonicalizer = 1;
 }
 
 def MatchAnyOp : Cicero_Op<"match_any"> {

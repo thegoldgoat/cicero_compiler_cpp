@@ -1,88 +1,115 @@
+#include "Passes.h"
 #include "DialectWrapper.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/PatternMatch.h"
 #include <iostream>
 
+void cicero_compiler::dialect::SplitOp::getCanonicalizationPatterns(
+    mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
+    results.add<cicero_compiler::passes::FlattenSplit>(context);
+}
+
+void cicero_compiler::dialect::PlaceholderOp::getCanonicalizationPatterns(
+    mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
+    results.add<cicero_compiler::passes::PlaceholderRemover>(context);
+}
+
+void cicero_compiler::dialect::JumpOp::getCanonicalizationPatterns(
+    mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
+    results.add<cicero_compiler::passes::SimplifyJump>(context);
+}
+
+namespace cicero_compiler::passes {
 using namespace cicero_compiler::dialect;
 
 unsigned int symbolCounter = 0;
 
-struct FlattenSplit : public mlir::OpRewritePattern<SplitOp> {
+mlir::LogicalResult
+FlattenSplit::matchAndRewrite(SplitOp op,
+                              mlir::PatternRewriter &rewriter) const {
 
-    FlattenSplit(mlir::MLIRContext *context)
-        : OpRewritePattern(context, /*benefit=*/100) {}
+    std::string splitTarget = "FLATTEN_" + std::to_string(symbolCounter++);
 
-    mlir::LogicalResult
-    matchAndRewrite(SplitOp op,
-                    mlir::PatternRewriter &rewriter) const override {
+    rewriter.setInsertionPointToEnd(op.getOperation()->getBlock());
+    rewriter.create<PlaceholderOp>(op.getLoc(), splitTarget);
 
-        std::string splitTarget = "FLATTEN_" + std::to_string(symbolCounter++);
+    rewriter.mergeBlocks(op.getBody(), op.getOperation()->getBlock());
+    rewriter.create<JumpOp>(op.getLoc(), op.getSplitReturnAttr());
 
-        rewriter.setInsertionPointToEnd(op.getOperation()->getBlock());
-        rewriter.create<PlaceholderOp>(op.getLoc(), splitTarget);
+    rewriter.setInsertionPointAfter(op.getOperation());
+    auto flatsplitOp = rewriter.replaceOpWithNewOp<FlatSplitOp>(
+        op.getOperation(), splitTarget);
+    flatsplitOp.setName(op.getNameAttr());
 
-        rewriter.mergeBlocks(op.getBody(), op.getOperation()->getBlock());
-        rewriter.create<JumpOp>(op.getLoc(), op.getSplitReturnAttr());
-
-        rewriter.setInsertionPointAfter(op.getOperation());
-        auto flatsplitOp = rewriter.replaceOpWithNewOp<FlatSplitOp>(
-            op.getOperation(), splitTarget);
-        flatsplitOp.setName(op.getNameAttr());
-
-        return mlir::success();
-    }
-};
-
-void cicero_compiler::dialect::SplitOp::getCanonicalizationPatterns(
-    mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
-    results.add<FlattenSplit>(context);
+    return mlir::success();
 }
 
-struct PlaceholderRemover : public mlir::OpRewritePattern<PlaceholderOp> {
-    PlaceholderRemover(mlir::MLIRContext *context)
-        : OpRewritePattern(context, /*benefit=*/1000) {}
+mlir::LogicalResult
+PlaceholderRemover::matchAndRewrite(PlaceholderOp op,
+                                    mlir::PatternRewriter &rewriter) const {
 
-    mlir::LogicalResult
-    matchAndRewrite(PlaceholderOp op,
-                    mlir::PatternRewriter &rewriter) const override {
+    auto nextOp = op.getOperation()->getNextNode();
 
-        auto nextOp = op.getOperation()->getNextNode();
+    if (!nextOp) {
+        op.emitError("PlaceholderOp must be followed by some other "
+                     "operation??? Or should we just remove it and assign "
+                     "my symbol to operation before me?");
+        return mlir::failure();
+    }
 
-        if (!nextOp) {
-            op.emitError("PlaceholderOp must be followed by some other "
-                         "operation??? Or should we just remove it and assign "
-                         "my symbol to operation before me?");
-            return mlir::failure();
-        }
+    auto nextOpSymbol = nextOp->getAttrOfType<mlir::StringAttr>(
+        mlir::SymbolTable::getSymbolAttrName());
 
-        auto nextOpSymbol = nextOp->getAttrOfType<mlir::StringAttr>(
-            mlir::SymbolTable::getSymbolAttrName());
-
-        if (!nextOpSymbol) {
-            mlir::SymbolTable::setSymbolName(nextOp, op.getName());
-            rewriter.eraseOp(op);
-            return mlir::success();
-        }
-
-        for (auto walker = op.getOperation(); walker;
-             walker = walker->getParentOp()) {
-
-            if (mlir::SymbolTable::replaceAllSymbolUses(op.getOperation(),
-                                                        nextOpSymbol, walker)
-                    .failed()) {
-                throw std::runtime_error(
-                    "During PlaceholderRemover, failed to replace all symbol "
-                    "uses of the placeholder symbol with the next operation's "
-                    "symbol");
-            }
-        }
-
+    if (!nextOpSymbol) {
+        mlir::SymbolTable::setSymbolName(nextOp, op.getName());
         rewriter.eraseOp(op);
         return mlir::success();
     }
-};
 
-void cicero_compiler::dialect::PlaceholderOp::getCanonicalizationPatterns(
-    mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
-    results.add<PlaceholderRemover>(context);
+    for (auto walker = op.getOperation(); walker;
+         walker = walker->getParentOp()) {
+
+        if (mlir::SymbolTable::replaceAllSymbolUses(op.getOperation(),
+                                                    nextOpSymbol, walker)
+                .failed()) {
+            throw std::runtime_error(
+                "During PlaceholderRemover, failed to replace all symbol "
+                "uses of the placeholder symbol with the next operation's "
+                "symbol");
+        }
+    }
+
+    rewriter.eraseOp(op);
+    return mlir::success();
 }
+
+mlir::LogicalResult
+SimplifyJump::matchAndRewrite(JumpOp op,
+                              mlir::PatternRewriter &rewriter) const {
+    auto targetOp =
+        mlir::SymbolTable::lookupNearestSymbolFrom(op.getOperation(), op.getTargetAttr());
+
+    if (!targetOp) {
+        op.emitError("Jump operation has invalid target?!?");
+        throw std::runtime_error("Jump operation has invalid target?!?");
+    }
+
+    if (auto otherOpJump = mlir::dyn_cast<JumpOp>(targetOp)) {
+        op.setTargetAttr(otherOpJump.getTargetAttr());
+        return mlir::success();
+    }
+
+    if (auto otherOpAccept = mlir::dyn_cast<AcceptOp>(targetOp)) {
+        rewriter.replaceOpWithNewOp<AcceptOp>(op.getOperation());
+        return mlir::success();
+    }
+
+    if (auto otherOpAccept = mlir::dyn_cast<AcceptPartialOp>(targetOp)) {
+        rewriter.replaceOpWithNewOp<AcceptPartialOp>(op.getOperation());
+        return mlir::success();
+    }
+
+    return mlir::failure();
+}
+
+} // namespace cicero_compiler::passes
