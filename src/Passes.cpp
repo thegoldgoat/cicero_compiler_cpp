@@ -94,6 +94,11 @@ SimplifyJump::matchAndRewrite(JumpOp op,
         throw std::runtime_error("Jump operation has invalid target?!?");
     }
 
+    if (targetOp == op.getOperation()->getNextNode()) {
+        rewriter.eraseOp(op);
+        return mlir::success();
+    }
+
     if (auto otherOpJump = mlir::dyn_cast<JumpOp>(targetOp)) {
         op.setTargetAttr(otherOpJump.getTargetAttr());
         return mlir::success();
