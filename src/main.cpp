@@ -131,6 +131,13 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    // Dump MLIR even before applying the patterns
+    if (emitAction == DumpMLIR) {
+        cout << "\n\n--- mlir before any pattern rewrites ---\n\n";
+        module.print(llvm::outs());
+        cout << "\n\n--- mlir after pattern rewrites      ---\n\n";
+    }
+
     mlir::RewritePatternSet patterns(&context);
     patterns.add<cicero_compiler::passes::FlattenSplit>(&context);
     patterns.add<cicero_compiler::passes::PlaceholderRemover>(&context);
@@ -142,6 +149,10 @@ int main(int argc, char **argv) {
     mlir::FrozenRewritePatternSet frozenPatterns(std::move(patterns));
 
     mlir::GreedyRewriteConfig greedyConfig;
+    // TopDownTraversal is mandatory for split flattening to work, otherwise two nested splits
+    // would have wrong placement, to see the difference try to compile the regex "^(a|b|c)*" with
+    // and without TopDownTraversal
+    greedyConfig.useTopDownTraversal = true;
 
     if (mlir::applyPatternsAndFoldGreedily(module.getOperation(),
                                            frozenPatterns, greedyConfig)
@@ -173,7 +184,9 @@ int main(int argc, char **argv) {
     operationIndex = 0;
     if (emitAction == DumpDOT) {
 
-        cout << "digraph {" << endl;
+        cout << "digraph {" << endl
+             << "begin [label=\"begin\"];" << endl
+             << "begin -> 0;" << endl;
         module.getBody()->walk([&symbolTable,
                                 &operationIndex](mlir::Operation *op) {
             bool isLastInstuction = op->getNextNode() == nullptr;

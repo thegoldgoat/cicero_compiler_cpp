@@ -36,9 +36,10 @@ PlaceholderRemover::matchAndRewrite(PlaceholderOp op,
     auto nextOp = op.getOperation()->getNextNode();
 
     if (!nextOp) {
-        op.emitError("PlaceholderOp must be followed by some other "
-                     "operation??? Or should we just remove it and assign "
-                     "my symbol to operation before me?");
+        op.emitWarning("PlaceholderOp is not followed by any other operation, "
+                       "hopefully this is because we still need to flatten "
+                       "some splits. My symbol is: " +
+                       op.getName().str());
         return mlir::failure();
     }
 
