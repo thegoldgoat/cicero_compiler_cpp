@@ -160,44 +160,50 @@ int main(int argc, char **argv) {
         cout << "digraph {" << endl;
         module.getBody()->walk([&symbolTable,
                                 &operationIndex](mlir::Operation *op) {
-            if (operationIndex != 0) {
-                cout << operationIndex - 1 << " -> " << operationIndex << ";\n";
-            }
+            bool isLastInstuction = op->getNextNode() == nullptr;
             if (CAST_MACRO(matchCharOp, op,
                            cicero_compiler::dialect::MatchCharOp)) {
-                cout << operationIndex
-                     << " [label=\"MatchChar: " << matchCharOp.getTargetChar()
-                     << "\"];\n";
+                outputDotFormat("MatchChar",
+                                string(1, matchCharOp.getTargetChar()),
+                                operationIndex, nullopt, !isLastInstuction);
             } else if (CAST_MACRO(notMatchOp, op,
                                   cicero_compiler::dialect::NotMatchCharOp)) {
-                cout << operationIndex
-                     << " [label=\"NotMatchChar: " << notMatchOp.getTargetChar()
-                     << "\"];\n";
+                outputDotFormat("NotMatchChar",
+                                string(1, notMatchOp.getTargetChar()),
+                                operationIndex, nullopt, !isLastInstuction);
             } else if (CAST_MACRO(matchAnyOp, op,
                                   cicero_compiler::dialect::MatchAnyOp)) {
+                outputDotFormat("MatchAny", nullopt, operationIndex, nullopt,
+                                !isLastInstuction);
             } else if (CAST_MACRO(flatSplitOp, op,
                                   cicero_compiler::dialect::FlatSplitOp)) {
                 uint16_t splitTargetIndex =
                     symbolTable.lookup(flatSplitOp.getSplitTarget());
 
-                cout << operationIndex << " [label=\"Split\"];\n"
-                     << operationIndex << " -> " << splitTargetIndex << ";\n";
+                if (isLastInstuction) {
+                    throw std::runtime_error(
+                        "Last instruction of program cannot be a split, how "
+                        "did we get here???");
+                }
+
+                outputDotFormat("Split", nullopt, operationIndex,
+                                splitTargetIndex, true);
 
             } else if (CAST_MACRO(acceptOp, op,
                                   cicero_compiler::dialect::AcceptOp)) {
-                cout << operationIndex << " [label=\"Accept\"];\n";
+                outputDotFormat("Accept", nullopt, operationIndex, nullopt,
+                                false);
             } else if (CAST_MACRO(acceptPartialOp, op,
                                   cicero_compiler::dialect::AcceptPartialOp)) {
-                cout << operationIndex << " [label=\"AcceptPartial\"];\n";
+                outputDotFormat("AcceptPartial", nullopt, operationIndex,
+                                nullopt, false);
             } else if (CAST_MACRO(jumpOp, op,
                                   cicero_compiler::dialect::JumpOp)) {
                 uint16_t jumpTargetIndex =
                     symbolTable.lookup(jumpOp.getTarget());
 
-                cout << operationIndex
-                     << " [label=\"Jump: " << notMatchOp.getTargetChar()
-                     << "\"];\n"
-                     << operationIndex << " -> " << jumpTargetIndex << ";\n";
+                outputDotFormat("Jump", nullopt, operationIndex,
+                                jumpTargetIndex, false);
             } else {
                 throw std::runtime_error(
                     "Code generation for operation not implemented: " +
