@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
                                 jumpTargetIndex, false);
             } else {
                 throw std::runtime_error(
-                    "Code generation for operation not implemented: " +
+                    "Graphviz output for operation not implemented: " +
                     op->getName().getStringRef().str());
             }
             operationIndex++;
