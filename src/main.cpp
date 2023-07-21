@@ -34,6 +34,9 @@ static cl::opt<enum CiceroAction>
     emitAction("emit", cl::desc("Select the kind of output desired"),
                cl::values(clEnumValN(DumpAST, "ast", "output the AST dump")),
                cl::values(clEnumValN(DumpMLIR, "mlir", "output the MLIR dump")),
+               cl::values(clEnumValN(
+                   DumpDOT, "mlir.dot",
+                   "output the cicero instruction in a graphviz format")),
                cl::values(clEnumValN(DumpCompiled, "compiled",
                                      "output the compiled artifact")));
 
@@ -52,6 +55,22 @@ void outputToFileBinaryFormat(uint16_t opCode, uint16_t opData,
                               ofstream &outputStream);
 void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
                            ofstream &outputStream);
+
+/// @brief Output the corresponding instruction in the dot format
+/// @param instructionName The name of the instruction e.g. MatchChar
+/// @param instructionArgument The argument (data) of the instruction e.g. for
+/// MatchChar argument is the char to match
+/// @param instructionIndex The address of the instruction in the program
+/// instruction memory
+/// @param targetIndex For jump, the jump target address. For split, the split
+/// target address
+/// @param linkToNext Specify if we need to link to the next instruction, true
+/// for everything except for accept/accept_partial/jump/last instruction of
+/// program
+void outputDotFormat(string instructionName,
+                     optional<string> instructionArgument,
+                     unsigned int instructionIndex,
+                     optional<unsigned int> targetIndex, bool linkToNext);
 
 int main(int argc, char **argv) {
     mlir::registerPassManagerCLOptions();
@@ -136,6 +155,60 @@ int main(int argc, char **argv) {
         });
 
     operationIndex = 0;
+    if (emitAction == DumpDOT) {
+
+        cout << "digraph {" << endl;
+        module.getBody()->walk([&symbolTable,
+                                &operationIndex](mlir::Operation *op) {
+            if (operationIndex != 0) {
+                cout << operationIndex - 1 << " -> " << operationIndex << ";\n";
+            }
+            if (CAST_MACRO(matchCharOp, op,
+                           cicero_compiler::dialect::MatchCharOp)) {
+                cout << operationIndex
+                     << " [label=\"MatchChar: " << matchCharOp.getTargetChar()
+                     << "\"];\n";
+            } else if (CAST_MACRO(notMatchOp, op,
+                                  cicero_compiler::dialect::NotMatchCharOp)) {
+                cout << operationIndex
+                     << " [label=\"NotMatchChar: " << notMatchOp.getTargetChar()
+                     << "\"];\n";
+            } else if (CAST_MACRO(matchAnyOp, op,
+                                  cicero_compiler::dialect::MatchAnyOp)) {
+            } else if (CAST_MACRO(flatSplitOp, op,
+                                  cicero_compiler::dialect::FlatSplitOp)) {
+                uint16_t splitTargetIndex =
+                    symbolTable.lookup(flatSplitOp.getSplitTarget());
+
+                cout << operationIndex << " [label=\"Split\"];\n"
+                     << operationIndex << " -> " << splitTargetIndex << ";\n";
+
+            } else if (CAST_MACRO(acceptOp, op,
+                                  cicero_compiler::dialect::AcceptOp)) {
+                cout << operationIndex << " [label=\"Accept\"];\n";
+            } else if (CAST_MACRO(acceptPartialOp, op,
+                                  cicero_compiler::dialect::AcceptPartialOp)) {
+                cout << operationIndex << " [label=\"AcceptPartial\"];\n";
+            } else if (CAST_MACRO(jumpOp, op,
+                                  cicero_compiler::dialect::JumpOp)) {
+                uint16_t jumpTargetIndex =
+                    symbolTable.lookup(jumpOp.getTarget());
+
+                cout << operationIndex
+                     << " [label=\"Jump: " << notMatchOp.getTargetChar()
+                     << "\"];\n"
+                     << operationIndex << " -> " << jumpTargetIndex << ";\n";
+            } else {
+                throw std::runtime_error(
+                    "Code generation for operation not implemented: " +
+                    op->getName().getStringRef().str());
+            }
+            operationIndex++;
+        });
+
+        cout << "}" << endl;
+        return 0;
+    }
 
     auto writeFunction = binaryOutputFormat == Hex ? outputToFileHexFormat
                                                    : outputToFileBinaryFormat;
@@ -229,4 +302,21 @@ void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
                            ofstream &outputStream) {
     uint16_t toWrite = CODEGEN_SEPARATION(opCode, opData);
     outputStream << "0x" << hex << toWrite << endl;
+}
+
+void outputDotFormat(string instructionName,
+                     optional<string> instructionArgument,
+                     unsigned int instructionIndex,
+                     optional<unsigned int> targetIndex, bool linkToNext) {
+    cout << instructionIndex << " [label=\"" << instructionName;
+    if (instructionArgument.has_value()) {
+        cout << ": " << instructionArgument.value();
+    }
+    cout << "\"];\n";
+    if (linkToNext) {
+        cout << instructionIndex << " -> " << instructionIndex + 1 << ";\n";
+    }
+    if (targetIndex.has_value()) {
+        cout << instructionIndex << " -> " << targetIndex.value() << ";\n";
+    }
 }
