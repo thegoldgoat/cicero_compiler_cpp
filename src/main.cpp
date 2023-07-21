@@ -3,14 +3,17 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/Verifier.h"
 #include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/Transforms/Passes.h"
 #include "llvm/ADT/ScopedHashTable.h"
 #include <fstream>
 #include <iostream>
 
+#include "Passes.h"
 #include "cicero_const.h"
 
 #include "ASTParser.h"
@@ -45,6 +48,10 @@ static cl::opt<enum CiceroBinaryOutputFormat> binaryOutputFormat(
     cl::values(clEnumValN(Binary, "binary", "output in binary format")),
     cl::values(clEnumValN(
         Hex, "hex", "output in hex format (one 16 bits hex value per line))")));
+
+cl::opt<bool>
+    optimizeJumps("ojump",
+                  cl::desc("Enable optimization for jumps instructions"));
 
 unique_ptr<RegexParser::AST::Root> getAST();
 
@@ -124,14 +131,23 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    mlir::PassManager pm(&context);
-    applyPassManagerCLOptions(pm);
+    mlir::RewritePatternSet patterns(&context);
+    patterns.add<cicero_compiler::passes::FlattenSplit>(&context);
+    patterns.add<cicero_compiler::passes::PlaceholderRemover>(&context);
 
-    pm.addPass(mlir::createCanonicalizerPass());
+    if (optimizeJumps.getValue()) {
+        patterns.add<cicero_compiler::passes::SimplifyJump>(&context);
+    }
 
-    if (mlir::failed(pm.run(module))) {
+    mlir::FrozenRewritePatternSet frozenPatterns(std::move(patterns));
+
+    mlir::GreedyRewriteConfig greedyConfig;
+
+    if (mlir::applyPatternsAndFoldGreedily(module.getOperation(),
+                                           frozenPatterns, greedyConfig)
+            .failed()) {
         module.print(llvm::outs());
-        cerr << "Error running canonicalizer pass" << endl;
+        cerr << "Pattern application failed" << endl;
         return -1;
     }
 

@@ -4,21 +4,6 @@
 #include "mlir/IR/PatternMatch.h"
 #include <iostream>
 
-void cicero_compiler::dialect::SplitOp::getCanonicalizationPatterns(
-    mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
-    results.add<cicero_compiler::passes::FlattenSplit>(context);
-}
-
-void cicero_compiler::dialect::PlaceholderOp::getCanonicalizationPatterns(
-    mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
-    results.add<cicero_compiler::passes::PlaceholderRemover>(context);
-}
-
-void cicero_compiler::dialect::JumpOp::getCanonicalizationPatterns(
-    mlir::RewritePatternSet &results, mlir::MLIRContext *context) {
-    results.add<cicero_compiler::passes::SimplifyJump>(context);
-}
-
 namespace cicero_compiler::passes {
 using namespace cicero_compiler::dialect;
 
@@ -86,8 +71,8 @@ PlaceholderRemover::matchAndRewrite(PlaceholderOp op,
 mlir::LogicalResult
 SimplifyJump::matchAndRewrite(JumpOp op,
                               mlir::PatternRewriter &rewriter) const {
-    auto targetOp =
-        mlir::SymbolTable::lookupNearestSymbolFrom(op.getOperation(), op.getTargetAttr());
+    auto targetOp = mlir::SymbolTable::lookupNearestSymbolFrom(
+        op.getOperation(), op.getTargetAttr());
 
     if (!targetOp) {
         op.emitError("Jump operation has invalid target?!?");

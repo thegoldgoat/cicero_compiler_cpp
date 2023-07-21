@@ -65,8 +65,6 @@ def SplitOp : Cicero_Op<"split", [SymbolTable, NoTerminator, DeclareOpInterfaceM
 
         bool isOptionalSymbol() { return true; }
     }];
-
-    let hasCanonicalizer = 1;
 }
 
 def FlatSplitOp : Cicero_Op<"flat_split", [DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
@@ -87,8 +85,6 @@ def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>
     }];
 
     let arguments = (ins FlatSymbolRefAttr:$target);
-
-    let hasCanonicalizer = 1;
 }
 
 def MatchAnyOp : Cicero_Op<"match_any"> {
@@ -129,8 +125,6 @@ def PlaceholderOp : Cicero_Op<"placeholder"> {
                         $_builder.getStringAttr(symbol));
         }]>
     ];
-
-    let hasCanonicalizer = 1;
 
     let extraClassDeclaration = [{
         bool isOptionalSymbol() { return true; }
