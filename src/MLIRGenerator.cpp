@@ -74,7 +74,7 @@ void cicero_compiler::MLIRGenerator::populateRegexBody(
 
 void cicero_compiler::MLIRGenerator::populateConcatenateBody(
     mlir::Block *block, const RegexParser::AST::Concatenation &concatenation) {
-    builder.setInsertionPointToStart(block);
+    builder.setInsertionPointToEnd(block);
 
     for (auto &piece : concatenation.getPieces()) {
         auto &atom = piece->getAtom();
