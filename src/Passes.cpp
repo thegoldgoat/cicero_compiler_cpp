@@ -32,41 +32,7 @@ FlattenSplit::matchAndRewrite(SplitOp op,
 mlir::LogicalResult
 PlaceholderRemover::matchAndRewrite(PlaceholderOp op,
                                     mlir::PatternRewriter &rewriter) const {
-
-    auto nextOp = op.getOperation()->getNextNode();
-
-    if (!nextOp) {
-        op.emitWarning("PlaceholderOp is not followed by any other operation, "
-                       "hopefully this is because we still need to flatten "
-                       "some splits. My symbol is: " +
-                       op.getName().str());
-        return mlir::failure();
-    }
-
-    auto nextOpSymbol = nextOp->getAttrOfType<mlir::StringAttr>(
-        mlir::SymbolTable::getSymbolAttrName());
-
-    if (!nextOpSymbol) {
-        mlir::SymbolTable::setSymbolName(nextOp, op.getName());
-        rewriter.eraseOp(op);
-        return mlir::success();
-    }
-
-    for (auto walker = op.getOperation(); walker;
-         walker = walker->getParentOp()) {
-
-        if (mlir::SymbolTable::replaceAllSymbolUses(op.getOperation(),
-                                                    nextOpSymbol, walker)
-                .failed()) {
-            throw std::runtime_error(
-                "During PlaceholderRemover, failed to replace all symbol "
-                "uses of the placeholder symbol with the next operation's "
-                "symbol");
-        }
-    }
-
-    rewriter.eraseOp(op);
-    return mlir::success();
+    return removeOperationAndMoveSymbolToNext(op.getOperation(), rewriter);
 }
 
 mlir::LogicalResult
@@ -81,8 +47,7 @@ SimplifyJump::matchAndRewrite(JumpOp op,
     }
 
     if (targetOp == op.getOperation()->getNextNode()) {
-        rewriter.eraseOp(op);
-        return mlir::success();
+        return removeOperationAndMoveSymbolToNext(op.getOperation(), rewriter);
     }
 
     if (auto otherOpJump = mlir::dyn_cast<JumpOp>(targetOp)) {
@@ -101,6 +66,48 @@ SimplifyJump::matchAndRewrite(JumpOp op,
     }
 
     return mlir::failure();
+}
+
+mlir::LogicalResult
+removeOperationAndMoveSymbolToNext(mlir::Operation *op,
+                                   mlir::PatternRewriter &rewriter) {
+    auto opSymbol = mlir::SymbolTable::getSymbolName(op);
+
+    auto nextOp = op->getNextNode();
+
+    if (!nextOp) {
+        op->emitWarning("Trying to move symbol to the next operation, but "
+                        "there is no next operation, failing "
+                        "gracefully. My operation name is: '" +
+                        op->getName().getStringRef().str() + "'; " +
+                        "My symbol is: '" +
+                        mlir::SymbolTable::getSymbolName(op).str() + "'");
+        return mlir::failure();
+    }
+
+    auto nextOpSymbol = mlir::SymbolTable::getSymbolName(nextOp);
+
+    // The next operation does not have a symbol, simply assign my symbol
+    if (!nextOpSymbol) {
+        mlir::SymbolTable::setSymbolName(nextOp, opSymbol);
+        rewriter.eraseOp(op);
+        return mlir::success();
+    }
+
+    // Otherwise, replace all uses of the operation symbol with the symbol of
+    // the next one
+    for (auto walker = op; walker; walker = walker->getParentOp()) {
+        if (mlir::SymbolTable::replaceAllSymbolUses(op, nextOpSymbol, walker)
+                .failed()) {
+            throw std::runtime_error(
+                "During PlaceholderRemover, failed to replace all symbol "
+                "uses of the placeholder symbol with the next operation's "
+                "symbol");
+        }
+    }
+
+    rewriter.eraseOp(op);
+    return mlir::success();
 }
 
 } // namespace cicero_compiler::passes

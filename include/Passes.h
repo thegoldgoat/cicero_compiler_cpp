@@ -48,4 +48,14 @@ struct PlaceholderRemover : public mlir::OpRewritePattern<PlaceholderOp> {
                     mlir::PatternRewriter &rewriter) const override;
 };
 
+/// @brief Removes this operation, and moves its symbol to the next operation
+/// @details This pass updates the operation by removing it, if it has a symbol
+/// then it moves the symbol to the next operation. If the next operation
+/// already has a symbol, then it will be replaced and all the uses of the
+/// replaced symbol will be corrected accordingly.
+/// @param op operation to remove
+/// @param rewriter pattern rewriter class to use
+mlir::LogicalResult removeOperationAndMoveSymbolToNext(mlir::Operation *op,
+                                        mlir::PatternRewriter &rewriter);
+
 } // namespace cicero_compiler::passes
