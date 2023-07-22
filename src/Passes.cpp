@@ -1,5 +1,5 @@
 #include "Passes.h"
-#include "DialectWrapper.h"
+#include "CiceroDialectWrapper.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/PatternMatch.h"
 #include <iostream>

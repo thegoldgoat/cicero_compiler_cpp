@@ -6,7 +6,7 @@
 #include "mlir/Interfaces/CallInterfaces.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
-#include "Dialect.h.inc"
+#include "CiceroDialect.h.inc"
 
 #define GET_OP_CLASSES
-#include "Ops.h.inc"
+#include "CiceroOps.h.inc"

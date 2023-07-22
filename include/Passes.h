@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DialectWrapper.h"
+#include "CiceroDialectWrapper.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include <memory>

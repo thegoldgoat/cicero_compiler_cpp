@@ -1,6 +1,6 @@
 #pragma once
 #include "AST.h"
-#include "DialectWrapper.h"
+#include "CiceroDialectWrapper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include <memory>

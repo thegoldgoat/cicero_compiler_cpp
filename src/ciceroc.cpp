@@ -1,4 +1,4 @@
-#include "DialectWrapper.h"
+#include "CiceroDialectWrapper.h"
 #include "MLIRGenerator.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"

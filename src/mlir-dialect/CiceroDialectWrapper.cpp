@@ -1,4 +1,4 @@
-#include "DialectWrapper.h"
+#include "CiceroDialectWrapper.h"
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -8,12 +8,12 @@
 using namespace mlir;
 using namespace cicero_compiler::dialect;
 
-#include "Dialect.cpp.inc"
+#include "CiceroDialect.cpp.inc"
 
 void CiceroDialect::initialize() {
     addOperations<
 #define GET_OP_LIST
-#include "Ops.cpp.inc"
+#include "CiceroOps.cpp.inc"
         >();
 }
 
@@ -71,4 +71,4 @@ LogicalResult FlatSplitOp::verifySymbolUses(SymbolTableCollection &symbolTable) 
 }
 
 #define GET_OP_CLASSES
-#include "Ops.cpp.inc"
+#include "CiceroOps.cpp.inc"

@@ -1,0 +1,6 @@
+set(LLVM_TARGET_DEFINITIONS RegexOps.td)
+mlir_tablegen(RegexOps.h.inc -gen-op-decls)
+mlir_tablegen(RegexOps.cpp.inc -gen-op-defs)
+mlir_tablegen(RegexDialect.h.inc -gen-dialect-decls)
+mlir_tablegen(RegexDialect.cpp.inc -gen-dialect-defs)
+add_public_tablegen_target(RegexDialect)

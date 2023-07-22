@@ -28,6 +28,32 @@ find_library(
     REQUIRED
 )
 
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    find_package(MLIR REQUIRED CONFIG)
+
+    message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
+    message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+    set(LLVM_RUNTIME_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/bin)
+    set(LLVM_LIBRARY_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/lib)
+    set(MLIR_BINARY_DIR ${CMAKE_BINARY_DIR})
+
+    list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+    list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+
+    include(TableGen)
+    include(AddLLVM)
+    include(AddMLIR)
+    include(HandleLLVMOptions)
+
+    include_directories(${MLIR_INCLUDE_DIRS})
+endif()
+
+add_subdirectory(src/mlir-dialect)
+
+message("Include mlir-dialect ${CMAKE_CURRENT_BINARY_DIR}/src/mlir-dialect")
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/mlir-dialect)
+
 include_directories(include)
 
 add_custom_command(
@@ -82,12 +108,18 @@ add_library(
         ${PROJECT_BINARY_DIR}/antlr-grammar/regexParser.cpp
         ${PROJECT_SOURCE_DIR}/src/ASTParser.cpp
         ${PROJECT_SOURCE_DIR}/src/visitor/Visitor.cpp
+        ${PROJECT_SOURCE_DIR}/src/RegexDialectWrapper.cpp
         ${PROJECT_BINARY_DIR}/include/metachars.h
 )
 
 target_link_libraries(
         RegexParser
         antlr4-runtime
+        MLIRAnalysis
+        MLIRIR
+        MLIRParser
+        MLIRSideEffectInterfaces
+        MLIRTransforms
 )
 
 add_executable(parsertest
