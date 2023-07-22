@@ -110,6 +110,12 @@ add_library(
         ${PROJECT_SOURCE_DIR}/src/visitor/Visitor.cpp
         ${PROJECT_SOURCE_DIR}/src/RegexDialectWrapper.cpp
         ${PROJECT_BINARY_DIR}/include/metachars.h
+        src/visitor/MLIRVisitor.cpp
+)
+
+add_dependencies(
+    RegexParser
+    RegexDialect
 )
 
 target_link_libraries(
@@ -128,5 +134,14 @@ add_executable(parsertest
 
 target_link_libraries(
         parsertest
+        RegexParser
+)
+
+add_executable(mlirdumper
+        src/newmain.cpp
+)
+
+target_link_libraries(
+        mlirdumper
         RegexParser
 )

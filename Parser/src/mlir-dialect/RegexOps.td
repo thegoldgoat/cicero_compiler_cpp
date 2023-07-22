@@ -16,10 +16,51 @@ def Regex_Dialect : Dialect {
 // Base operation definition
 class Regex_Op<string mnemonic, list<Trait> traits = []> : Op<Regex_Dialect, mnemonic, traits> {}
 
+def RootOp : Regex_Op<"root"> {
+    let summary = "Root of the Regex";
+    let description = [{
+        Match if the regex matches
+    }];
+
+    let regions = (region AnyRegion:$rootRegion);
+    let arguments = (ins BoolAttr:$hasPrefix, BoolAttr:$hasSuffix);
+
+    let builders = [
+        OpBuilder<(ins "bool":$hasPrefix, "bool":$hasSuffix), [{
+            $_state.addRegion();
+            $_state.regions[0]->push_back(new Block());
+
+            $_state.addAttribute(getHasPrefixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), hasPrefix));
+            $_state.addAttribute(getHasSuffixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), hasSuffix));
+        }]>
+    ];
+
+    let extraClassDeclaration = [{
+        mlir::Block *getBody() {
+            return &getRootRegion().getBlocks().front();
+        }
+    }];
+}
+
 def AlternationOp : Regex_Op<"alternation"> {
     let summary = "Alternation of Concatenations";
     let description = [{
         Match if any of the concatenation matches
+    }];
+
+    let regions = (region AnyRegion:$alternationRegion);
+
+    let builders = [
+        OpBuilder<(ins ), [{
+            $_state.addRegion();
+            $_state.regions[0]->push_back(new Block());
+        }]>
+    ];
+
+    let extraClassDeclaration = [{
+        mlir::Block *getBody() {
+            return &getAlternationRegion().getBlocks().front();
+        }
     }];
 }
 
@@ -28,12 +69,42 @@ def ConcatenationOp : Regex_Op<"concatenation"> {
     let description = [{
         Match if all the pieces match in sequence
     }];
+
+    let regions = (region AnyRegion:$concatenationRegion);
+
+    let builders = [
+        OpBuilder<(ins ), [{
+            $_state.addRegion();
+            $_state.regions[0]->push_back(new Block());
+        }]>
+    ];
+
+    let extraClassDeclaration = [{
+        mlir::Block *getBody() {
+            return &getConcatenationRegion().getBlocks().front();
+        }
+    }];
 }
 
 def PieceOp : Regex_Op<"piece"> {
     let summary = "Atom with optional quantifier";
     let description = [{
         Match if we find <atom> repeated <quantifier> times
+    }];
+
+    let regions = (region AnyRegion:$pieceRegion);
+
+    let builders = [
+        OpBuilder<(ins ), [{
+            $_state.addRegion();
+            $_state.regions[0]->push_back(new Block());
+        }]>
+    ];
+
+    let extraClassDeclaration = [{
+        mlir::Block *getBody() {
+            return &getPieceRegion().getBlocks().front();
+        }
     }];
 }
 
@@ -78,6 +149,21 @@ def SubRegexOp : Regex_Op<"sub_regex"> {
     let summary = "Sub-Regex";
     let description = [{
         Match if the sub-regex matches
+    }];
+
+    let regions = (region AnyRegion:$subregexRegion);
+
+    let builders = [
+        OpBuilder<(ins ), [{
+            $_state.addRegion();
+            $_state.regions[0]->push_back(new Block());
+        }]>
+    ];
+
+    let extraClassDeclaration = [{
+        mlir::Block *getBody() {
+            return &getSubregexRegion().getBlocks().front();
+        }
     }];
 }
 
