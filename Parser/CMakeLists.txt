@@ -6,11 +6,29 @@ project("RegexParser")
 set(CMAKE_CXX_STANDARD 17)
 
 # Include antlr4 runtime
-include_directories(/usr/include/antlr4-runtime)
+find_path(
+    ANTLR4_RUNTIME_INCLUDE_DIR
+    antlr4-runtime/antlr4-runtime.h
+    REQUIRED
+)
+
+message(STATUS "Using ANTLR4_RUNTIME_INCLUDE_DIR: ${ANTLR4_RUNTIME_INCLUDE_DIR}")
+
+include_directories("${ANTLR4_RUNTIME_INCLUDE_DIR}/antlr4-runtime")
+
+find_program(
+    ANTLR4_TOOL
+    antlr4
+    REQUIRED
+)
+
+find_library(
+    ANTLR4_RUNTIME
+    antlr4-runtime
+    REQUIRED
+)
 
 include_directories(include)
-
-set(ANTLR4_TOOL /usr/bin/antlr4)
 
 add_custom_command(
     OUTPUT
@@ -69,7 +87,7 @@ add_library(
 
 target_link_libraries(
         RegexParser
-        -lantlr4-runtime
+        antlr4-runtime
 )
 
 add_executable(parsertest

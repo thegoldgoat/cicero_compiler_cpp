@@ -4,22 +4,31 @@ C++ implementation of a regex compiler for [Cicero](https://github.com/necst/cic
 
 ## Build
 
-Install dependencies first, on Fedora Linux:
+Install dependencies first:
 
 ```bash
-dnf install cmake antlr4 antlr4-cpp-runtime-devel mlir-devel
+# Ubuntu Linux
+# Add LLVM apt repository, follow instruction on https://apt.llvm.org/
+apt install libmlir-16-dev mlir-16-tools llvm-16-dev antlr4 libantlr4-runtime-dev cmake
+
+# Fedora Linux
+dnf install cmake antlr4 antlr4-cpp-runtime-devel mlir-devel llvm-devel
 ```
 
 1. `cmake`: cross platform build file generator
 2. `antlr4`: tool for building parser/lexer from declarative grammar/tokens
 3. `antlr4-cpp-runtime-devel`: C++ runtime for antlr4
 4. `mlir-devel`: intermediate representation library
+5. `llvm-devel`: compiler infrastructure library
 
 Once dependencies are installed, clone this repo and `cd` into it:
 
 ```bash
 mkdir build
 cd build
+# Optional, only if you want to build tests
+git submodule update --init --recursive
+# If you don't want to build tests, add `-DBUILD_TESTING=OFF` to the next command
 cmake ..
 cmake --build .
 ```
