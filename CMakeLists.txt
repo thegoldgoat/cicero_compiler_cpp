@@ -32,22 +32,22 @@ include_directories(include)
 include_directories(Parser/include)
 
 add_executable(
-  main
+  ciceroc
   ${CMAKE_CURRENT_BINARY_DIR}/src/mlir-dialect/Dialect.cpp.inc
-  src/main.cpp
+  src/ciceroc.cpp
   src/mlir-dialect/DialectWrapper.cpp
   src/MLIRGenerator.cpp
   src/Passes.cpp
 )
 
 add_dependencies(
-  main
+  ciceroc
   CiceroDialect
 )
 
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 
-target_link_libraries(main
+target_link_libraries(ciceroc
   PRIVATE
     RegexParser
     MLIRAnalysis
@@ -68,5 +68,6 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif()
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+    add_subdirectory(thirdparty/SoftwareCicero)
     add_subdirectory(tests)
 endif()

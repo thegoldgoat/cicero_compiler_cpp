@@ -1,0 +1,3 @@
+[submodule "thirdparty/SoftwareCicero"]
+	path = thirdparty/SoftwareCicero
+	url = https://github.com/thegoldgoat/SoftwareCicero.git
