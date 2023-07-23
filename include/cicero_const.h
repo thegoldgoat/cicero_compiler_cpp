@@ -13,4 +13,10 @@ enum CiceroOpCodes {
 
 enum CiceroBinaryOutputFormat { Binary, Hex };
 
-enum CiceroAction { None, DumpAST, DumpMLIR, DumpDOT, DumpCompiled };
+enum CiceroAction {
+    None,
+    DumpRegexMLIR,
+    DumpCiceroMLIR,
+    DumpCiceroDOT,
+    DumpCompiled
+};

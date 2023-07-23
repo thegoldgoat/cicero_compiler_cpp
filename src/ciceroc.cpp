@@ -1,5 +1,7 @@
 #include "CiceroDialectWrapper.h"
 #include "MLIRGenerator.h"
+#include "mlir-dialect/RegexToCiceroConversion/RegexToCiceroPasses.h"
+#include "mlir-dialect/RegexToCiceroConversion/RegexToCiceroTarget.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
@@ -16,7 +18,7 @@
 #include "Passes.h"
 #include "cicero_const.h"
 
-#include "ASTParser.h"
+#include "MLIRParser.h"
 
 using namespace std;
 namespace cl = llvm::cl;
@@ -35,11 +37,13 @@ static cl::opt<std::string> outputFilename(cl::Optional,
 
 static cl::opt<enum CiceroAction>
     emitAction("emit", cl::desc("Select the kind of output desired"),
-               cl::values(clEnumValN(DumpAST, "ast", "output the AST dump")),
-               cl::values(clEnumValN(DumpMLIR, "mlir", "output the MLIR dump")),
+               cl::values(clEnumValN(DumpRegexMLIR, "regexmlir",
+                                     "output the regex MLIR dump")),
+               cl::values(clEnumValN(DumpCiceroMLIR, "ciceromlir",
+                                     "output the cicero MLIR dump")),
                cl::values(clEnumValN(
-                   DumpDOT, "mlir.dot",
-                   "output the cicero instruction in a graphviz format")),
+                   DumpCiceroDOT, "ciceromlir.dot",
+                   "output the cicero mlir operations in a graphviz format")),
                cl::values(clEnumValN(DumpCompiled, "compiled",
                                      "output the compiled artifact")));
 
@@ -53,7 +57,7 @@ cl::opt<bool>
     optimizeJumps("ojump",
                   cl::desc("Enable optimization for jumps instructions"));
 
-unique_ptr<RegexParser::AST::Root> getAST();
+mlir::ModuleOp getRegexModule(mlir::MLIRContext &context);
 
 #define CAST_MACRO(resultName, inputOperation, operationType)                  \
     auto resultName = mlir::dyn_cast<operationType>(inputOperation)
@@ -105,25 +109,27 @@ int main(int argc, char **argv) {
         }
     }
 
-    auto regexAST = getAST();
+    mlir::MLIRContext context;
+    context.getOrLoadDialect<cicero_compiler::dialect::CiceroDialect>();
+    context.getOrLoadDialect<RegexParser::dialect::RegexDialect>();
+    context.enableMultithreading(false);
 
-    if (!regexAST) {
-        cerr << "Error parsing regex?" << endl;
-        return -1;
-    }
+    auto module = getRegexModule(context);
 
-    if (emitAction == DumpAST) {
-        std::cout << "digraph {\n" << regexAST->toDotty() << "}" << std::endl;
+    if (emitAction == DumpRegexMLIR) {
+        module.print(llvm::outs());
         return 0;
     }
 
-    mlir::MLIRContext context;
-    context.getOrLoadDialect<cicero_compiler::dialect::CiceroDialect>();
-
-    context.enableMultithreading(false);
-
-    auto module =
-        cicero_compiler::MLIRGenerator(context).mlirGen(move(regexAST));
+    auto translateTarget = cicero_compiler::RegexToCicero(context);
+    auto translatePatternSet =
+        cicero_compiler::createRegexToCiceroPatterns(context);
+    if (mlir::applyFullConversion(module.getOperation(), translateTarget,
+                                  translatePatternSet)
+            .failed()) {
+        cerr << "Regex dialect to Cicero dialect conversion failed" << endl;
+        return -1;
+    }
 
     if (mlir::failed(mlir::verify(module))) {
         module.print(llvm::outs());
@@ -132,7 +138,7 @@ int main(int argc, char **argv) {
     }
 
     // Dump MLIR even before applying the patterns
-    if (emitAction == DumpMLIR) {
+    if (emitAction == DumpCiceroMLIR) {
         cout << "\n\n--- mlir before any pattern rewrites ---\n\n";
         module.print(llvm::outs());
         cout << "\n\n--- mlir after pattern rewrites      ---\n\n";
@@ -149,9 +155,9 @@ int main(int argc, char **argv) {
     mlir::FrozenRewritePatternSet frozenPatterns(std::move(patterns));
 
     mlir::GreedyRewriteConfig greedyConfig;
-    // TopDownTraversal is mandatory for split flattening to work, otherwise two nested splits
-    // would have wrong placement, to see the difference try to compile the regex "^(a|b|c)*" with
-    // and without TopDownTraversal
+    // TopDownTraversal is mandatory for split flattening to work, otherwise two
+    // nested splits would have wrong placement, to see the difference try to
+    // compile the regex "^(a|b|c)*" with and without TopDownTraversal
     greedyConfig.useTopDownTraversal = true;
 
     if (mlir::applyPatternsAndFoldGreedily(module.getOperation(),
@@ -162,7 +168,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    if (emitAction == DumpMLIR) {
+    if (emitAction == DumpCiceroMLIR) {
         module.print(llvm::outs());
         return 0;
     }
@@ -182,7 +188,7 @@ int main(int argc, char **argv) {
         });
 
     operationIndex = 0;
-    if (emitAction == DumpDOT) {
+    if (emitAction == DumpCiceroDOT) {
 
         cout << "digraph {" << endl
              << "begin [label=\"begin\"];" << endl
@@ -288,19 +294,19 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-unique_ptr<RegexParser::AST::Root> getAST() {
+mlir::ModuleOp getRegexModule(mlir::MLIRContext &context) {
 
     if (inputFilename.getNumOccurrences() == 0) {
         string regex;
 
         if (inputRegex.getNumOccurrences() > 0) {
             regex = inputRegex;
-            return RegexParser::parseRegexFromString(regex);
+            return RegexParser::parseRegexFromString(context, regex);
         }
         cout << "Enter regex: ";
         cin >> regex;
         cout << endl;
-        return RegexParser::parseRegexFromString(regex);
+        return RegexParser::parseRegexFromString(context, regex);
     }
 
     if (inputRegex.getNumOccurrences() > 0) {
@@ -322,7 +328,7 @@ unique_ptr<RegexParser::AST::Root> getAST() {
     }
     cout << "--- End of file content ---" << endl;
 
-    return RegexParser::parseRegexFromFile(inputFilename);
+    return RegexParser::parseRegexFromFile(context, inputFilename);
 }
 
 #define CODEGEN_SEPARATION(opCode, opData)                                     \

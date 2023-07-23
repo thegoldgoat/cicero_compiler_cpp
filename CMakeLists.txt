@@ -28,6 +28,8 @@ add_subdirectory(src/mlir-dialect)
 
 # Include generated dialect headers
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/mlir-dialect)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/Parser/src/mlir-dialect)
+
 include_directories(include)
 include_directories(Parser/include)
 
@@ -36,6 +38,7 @@ add_executable(
   ${CMAKE_CURRENT_BINARY_DIR}/src/mlir-dialect/Dialect.cpp.inc
   src/ciceroc.cpp
   src/mlir-dialect/CiceroDialectWrapper.cpp
+  src/mlir-dialect/RegexToCiceroConversion/RegexToCiceroPasses.cpp
   src/MLIRGenerator.cpp
   src/Passes.cpp
 )
@@ -43,13 +46,14 @@ add_executable(
 add_dependencies(
   ciceroc
   CiceroDialect
+  RegexDialect
 )
 
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 
 target_link_libraries(ciceroc
   PRIVATE
-    ASTRegexParser
+    MLIRRegexParser
     MLIRAnalysis
     MLIRIR
     MLIRParser
