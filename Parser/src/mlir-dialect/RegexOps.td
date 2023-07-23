@@ -142,6 +142,8 @@ def GroupOp : Regex_Op<"group"> {
     let description = [{
         Match if any of the characters in the group is found
     }];
+
+    let arguments = (ins DenseBoolArrayAttr:$targetChars);
 }
 
 

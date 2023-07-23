@@ -102,24 +102,48 @@ add_custom_command(
 include_directories(${PROJECT_BINARY_DIR}/include)
 
 add_library(
-        RegexParser
+        ASTRegexParser
         SHARED
         ${PROJECT_BINARY_DIR}/antlr-grammar/regexLexer.cpp
         ${PROJECT_BINARY_DIR}/antlr-grammar/regexParser.cpp
         ${PROJECT_SOURCE_DIR}/src/ASTParser.cpp
         ${PROJECT_SOURCE_DIR}/src/visitor/Visitor.cpp
+        ${PROJECT_BINARY_DIR}/include/metachars.h
+)
+
+target_link_libraries(
+        ASTRegexParser
+        antlr4-runtime
+)
+
+add_executable(
+        astdumper
+        src/ast_dump.cpp
+)
+
+target_link_libraries(
+        astdumper
+        ASTRegexParser
+)
+
+add_library(
+        MLIRRegexParser
+        SHARED
+        ${PROJECT_BINARY_DIR}/antlr-grammar/regexLexer.cpp
+        ${PROJECT_BINARY_DIR}/antlr-grammar/regexParser.cpp
+        ${PROJECT_SOURCE_DIR}/src/MLIRParser.cpp
         ${PROJECT_SOURCE_DIR}/src/RegexDialectWrapper.cpp
         ${PROJECT_BINARY_DIR}/include/metachars.h
         src/visitor/MLIRVisitor.cpp
 )
 
 add_dependencies(
-    RegexParser
+    MLIRRegexParser
     RegexDialect
 )
 
 target_link_libraries(
-        RegexParser
+        MLIRRegexParser
         antlr4-runtime
         MLIRAnalysis
         MLIRIR
@@ -128,20 +152,12 @@ target_link_libraries(
         MLIRTransforms
 )
 
-add_executable(parsertest
-        src/main.cpp
-)
-
-target_link_libraries(
-        parsertest
-        RegexParser
-)
-
-add_executable(mlirdumper
-        src/newmain.cpp
+add_executable(
+        mlirdumper
+        src/mlir_dump.cpp
 )
 
 target_link_libraries(
         mlirdumper
-        RegexParser
+        MLIRRegexParser
 )

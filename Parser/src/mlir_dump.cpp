@@ -5,22 +5,9 @@
 #include "antlr4-runtime.h"
 #include "regexLexer.h"
 #include "regexParser.h"
-#include "visitor/MLIRVisitor.h"
+#include "MLIRParser.h"
 
 using namespace std;
-
-mlir::ModuleOp parseRegexImpl(mlir::MLIRContext &context,
-                              antlr4::ANTLRInputStream input,
-                              std::string &sourceName) {
-    regexLexer lexer(&input);
-    antlr4::CommonTokenStream tokens(&lexer);
-
-    regexParser parser(&tokens);
-
-    auto regExpRoot = parser.root();
-
-    return RegexParser::MLIRVisitor(context, sourceName).visitRoot(regExpRoot);
-}
 
 int main(int argc, char **argv) {
 
@@ -47,16 +34,9 @@ int main(int argc, char **argv) {
         cout << "---  End  ---" << endl;
     }
 
-    ifstream stream;
-    stream.open(filename);
-
-    if (!stream) {
-        return 1;
-    }
-
     mlir::MLIRContext context;
 
     context.getOrLoadDialect<RegexParser::dialect::RegexDialect>();
 
-    parseRegexImpl(context, antlr4::ANTLRInputStream(stream), filename).dump();
+    RegexParser::parseRegexFromFile(context, filename).dump();
 }

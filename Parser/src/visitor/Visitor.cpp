@@ -140,23 +140,36 @@ RegexVisitor::visitQuantifier(regexParser::QuantifierContext *ctx) {
 }
 
 vector<bool> RegexVisitor::visitMetachar(regexParser::MetacharContext *ctx) {
+    bool *selectedBuffer;
     char metachar = ctx->getText()[1];
     switch (metachar) {
     case 'd':
-        return DIGIT_SET;
+        selectedBuffer = DIGIT_SET;
+        break;
     case 'D':
-        return DIGIT_SET_COMPLEMENTED;
+        selectedBuffer = DIGIT_SET_COMPLEMENTED;
+        break;
     case 'w':
-        return WORD_SET;
+        selectedBuffer = WORD_SET;
+        break;
     case 'W':
-        return WORD_SET_COMPLEMENTED;
+        selectedBuffer = WORD_SET_COMPLEMENTED;
+        break;
     case 's':
-        return WHITESPACE_SET;
+        selectedBuffer = WHITESPACE_SET;
+        break;
     case 'S':
-        return WHITESPACE_SET_COMPLEMENTED;
+        selectedBuffer = WHITESPACE_SET_COMPLEMENTED;
+        break;
     default:
         throw runtime_error("Invalid metachar");
     }
+    vector<bool> retVal(256);
+    for (vector<bool>::size_type i = 0; i < retVal.size(); i++) {
+        retVal[i] = selectedBuffer[i];
+    }
+
+    return retVal;
 }
 
 pair<int, int> RegexVisitor::visitQuantity(regexParser::QuantityContext *ctx) {

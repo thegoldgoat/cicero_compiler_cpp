@@ -49,7 +49,7 @@ link_directories(${LLVM_BUILD_LIBRARY_DIR})
 
 target_link_libraries(ciceroc
   PRIVATE
-    RegexParser
+    ASTRegexParser
     MLIRAnalysis
     MLIRIR
     MLIRParser

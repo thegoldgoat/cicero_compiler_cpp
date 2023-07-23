@@ -1,6 +1,9 @@
 #include "MLIRVisitor.h"
 #include "RegexDialectWrapper.h"
 
+#include "metachars.h"
+#include <array>
+
 namespace RegexParser {
 
 #define LOCATION_MACRO(ctx_macro)                                              \
@@ -53,9 +56,10 @@ void MLIRVisitor::visitPiece(regexParser::PieceContext *ctx) {
 }
 
 void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
-    // TODO: Metachar
+    // Metachar
     if (ctx->metachar()) {
-        builder.create<dialect::GroupOp>(LOCATION_MACRO(ctx));
+        builder.create<dialect::GroupOp>(LOCATION_MACRO(ctx),
+                                         visitMetachar(ctx->metachar()));
         return;
     }
 
@@ -81,9 +85,49 @@ void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
         return;
     }
 
-    // TODO: Group
+    // Group
     if (ctx->LBRACKET()) {
-        builder.create<dialect::GroupOp>(LOCATION_MACRO(ctx));
+        bool charSet[256];
+        memset(charSet, false, sizeof(charSet));
+        for (auto &groupCtx : ctx->group()) {
+            if (groupCtx->metachar()) {
+                auto mergeChar = visitMetachar(groupCtx->metachar());
+
+                for (std::size_t i = 0; i < sizeof(charSet); i++) {
+                    charSet[i] = charSet[i] || mergeChar[i];
+                }
+            } else if (groupCtx->single_char) {
+                charSet[static_cast<int>(groupCtx->single_char->getText()[0])] =
+                    true;
+            } else {
+                auto begin = groupCtx->first_char->getText()[0];
+                auto end = groupCtx->second_char->getText()[0];
+
+                if (begin > end) {
+                    throw std::runtime_error(
+                        "Invalid character range, second must be greater than "
+                        "first: '" +
+                        groupCtx->getText() + "' at " +
+                        groupCtx->getSourceInterval().toString());
+                }
+
+                for (int i = begin; i <= end; i++) {
+                    charSet[i] = true;
+                }
+            }
+        }
+
+        // Negate the character set if the HAT is present
+        if (ctx->HAT()) {
+            for (std::vector<bool>::size_type i = 0; i < sizeof(charSet); i++) {
+                charSet[i] = !charSet[i];
+            }
+        }
+
+        builder.create<dialect::GroupOp>(
+            LOCATION_MACRO(ctx),
+            builder.getDenseBoolArrayAttr(
+                llvm::ArrayRef<bool>(charSet, sizeof(charSet))));
         return;
     }
 
@@ -92,7 +136,71 @@ void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
 }
 
 void MLIRVisitor::visitQuantifier(regexParser::QuantifierContext *ctx) {
-    builder.create<dialect::QuantifierOp>(LOCATION_MACRO(ctx), 10, 100);
+    if (ctx->QUESTION()) {
+        builder.create<dialect::QuantifierOp>(LOCATION_MACRO(ctx), 0, 1);
+        return;
+    }
+
+    if (ctx->STAR()) {
+        builder.create<dialect::QuantifierOp>(LOCATION_MACRO(ctx), 0, -1);
+        return;
+    }
+
+    if (ctx->PLUS()) {
+        builder.create<dialect::QuantifierOp>(LOCATION_MACRO(ctx), 1, -1);
+        return;
+    }
+
+    if (ctx->quantity()) {
+        auto boundaries = visitQuantity(ctx->quantity());
+
+        builder.create<dialect::QuantifierOp>(
+            LOCATION_MACRO(ctx), boundaries.first, boundaries.second);
+        return;
+    }
+
+    throw std::runtime_error("Invalid quantifier: " + ctx->getText() + " at " +
+                             ctx->getSourceInterval().toString());
+}
+
+#define BUILD_BOOL_REF_ARRAY_MACRO(array)                                      \
+    builder.getDenseBoolArrayAttr(llvm::ArrayRef<bool>(array, sizeof(array)))
+
+mlir::DenseBoolArrayAttr
+MLIRVisitor::visitMetachar(regexParser::MetacharContext *ctx) {
+    char metachar = ctx->getText()[1];
+    switch (metachar) {
+    case 'd':
+        return BUILD_BOOL_REF_ARRAY_MACRO(DIGIT_SET);
+    case 'D':
+        return BUILD_BOOL_REF_ARRAY_MACRO(DIGIT_SET_COMPLEMENTED);
+    case 'w':
+        return BUILD_BOOL_REF_ARRAY_MACRO(WORD_SET);
+    case 'W':
+        return BUILD_BOOL_REF_ARRAY_MACRO(WORD_SET_COMPLEMENTED);
+    case 's':
+        return BUILD_BOOL_REF_ARRAY_MACRO(WHITESPACE_SET);
+    case 'S':
+        return BUILD_BOOL_REF_ARRAY_MACRO(WHITESPACE_SET_COMPLEMENTED);
+    default:
+        throw std::runtime_error("Invalid metachar: " + ctx->getText() +
+                                 " at " + ctx->getSourceInterval().toString());
+    }
+}
+
+std::pair<int, int>
+MLIRVisitor::visitQuantity(regexParser::QuantityContext *ctx) {
+    if (ctx->exactlynum) {
+        int exactVal = stoi(ctx->exactlynum->getText());
+        return {exactVal, exactVal};
+    } else if (ctx->atleastnum) {
+        int atleastVal = stoi(ctx->atleastnum->getText());
+        return {atleastVal, -1};
+    } else {
+        int minVal = stoi(ctx->minnum->getText());
+        int maxVal = stoi(ctx->maxnum->getText());
+        return {minVal, maxVal};
+    }
 }
 
 } // namespace RegexParser
