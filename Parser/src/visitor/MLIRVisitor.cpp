@@ -20,18 +20,15 @@ mlir::ModuleOp MLIRVisitor::visitRoot(regexParser::RootContext *ctx) {
     auto root = builder.create<dialect::RootOp>(LOCATION_MACRO(ctx), hasPrefix,
                                                 hasSuffix);
 
-    builder.setInsertionPointToStart(root.getBody());
-
-    visitRegExp(ctx->regExp());
+    visitRegExp(root.getBody(), ctx->regExp());
 
     return module;
 }
 
-void MLIRVisitor::visitRegExp(regexParser::RegExpContext *ctx) {
-    auto alternationOp =
-        builder.create<dialect::AlternationOp>(LOCATION_MACRO(ctx));
+void MLIRVisitor::visitRegExp(mlir::Block *block,
+                              regexParser::RegExpContext *ctx) {
     for (auto concatenation : ctx->concatenation()) {
-        builder.setInsertionPointToEnd(alternationOp.getBody());
+        builder.setInsertionPointToEnd(block);
         visitConcatenation(concatenation);
     }
 }
@@ -80,8 +77,7 @@ void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
     if (ctx->LPAR()) {
         auto subregex =
             builder.create<dialect::SubRegexOp>(LOCATION_MACRO(ctx));
-        builder.setInsertionPointToStart(subregex.getBody());
-        visitRegExp(ctx->regExp());
+        visitRegExp(subregex.getBody(), ctx->regExp());
         return;
     }
 

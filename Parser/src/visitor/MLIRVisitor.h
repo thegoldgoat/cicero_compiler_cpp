@@ -19,7 +19,7 @@ class MLIRVisitor {
 
     mlir::ModuleOp visitRoot(regexParser::RootContext *ctx);
 
-    void visitRegExp(regexParser::RegExpContext *ctx);
+    void visitRegExp(mlir::Block *block, regexParser::RegExpContext *ctx);
 
     void visitConcatenation(regexParser::ConcatenationContext *ctx);
 

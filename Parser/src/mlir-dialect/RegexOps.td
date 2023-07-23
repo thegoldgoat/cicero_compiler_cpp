@@ -42,28 +42,6 @@ def RootOp : Regex_Op<"root"> {
     }];
 }
 
-def AlternationOp : Regex_Op<"alternation"> {
-    let summary = "Alternation of Concatenations";
-    let description = [{
-        Match if any of the concatenation matches
-    }];
-
-    let regions = (region AnyRegion:$alternationRegion);
-
-    let builders = [
-        OpBuilder<(ins ), [{
-            $_state.addRegion();
-            $_state.regions[0]->push_back(new Block());
-        }]>
-    ];
-
-    let extraClassDeclaration = [{
-        mlir::Block *getBody() {
-            return &getAlternationRegion().getBlocks().front();
-        }
-    }];
-}
-
 def ConcatenationOp : Regex_Op<"concatenation"> {
     let summary = "Concatenations of Pieces";
     let description = [{
@@ -114,7 +92,7 @@ def QuantifierOp : Regex_Op<"quantifier"> {
         Match if we find <atom> repeated <quantifier> times
     }];
 
-    let arguments = (ins I64Attr:$min, I64Attr:$max);
+    let arguments = (ins SI64Attr:$min, SI64Attr:$max);
 }
 
 // class AtomOp<string mnemonic> : Regex_Op<mnemonic> {

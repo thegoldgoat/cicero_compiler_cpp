@@ -38,8 +38,7 @@ add_executable(
   ${CMAKE_CURRENT_BINARY_DIR}/src/mlir-dialect/Dialect.cpp.inc
   src/ciceroc.cpp
   src/mlir-dialect/CiceroDialectWrapper.cpp
-  src/mlir-dialect/RegexToCiceroConversion/RegexToCiceroPasses.cpp
-  src/MLIRGenerator.cpp
+  src/CiceroMLIRGenerator.cpp
   src/Passes.cpp
 )
 

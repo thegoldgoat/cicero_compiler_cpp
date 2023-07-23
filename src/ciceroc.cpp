@@ -1,7 +1,4 @@
 #include "CiceroDialectWrapper.h"
-#include "MLIRGenerator.h"
-#include "mlir-dialect/RegexToCiceroConversion/RegexToCiceroPasses.h"
-#include "mlir-dialect/RegexToCiceroConversion/RegexToCiceroTarget.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
@@ -14,6 +11,8 @@
 #include "llvm/ADT/ScopedHashTable.h"
 #include <fstream>
 #include <iostream>
+
+#include "CiceroMLIRGenerator.h"
 
 #include "Passes.h"
 #include "cicero_const.h"
@@ -114,22 +113,15 @@ int main(int argc, char **argv) {
     context.getOrLoadDialect<RegexParser::dialect::RegexDialect>();
     context.enableMultithreading(false);
 
-    auto module = getRegexModule(context);
+    auto regexModule = getRegexModule(context);
 
     if (emitAction == DumpRegexMLIR) {
-        module.print(llvm::outs());
+        regexModule.print(llvm::outs());
         return 0;
     }
 
-    auto translateTarget = cicero_compiler::RegexToCicero(context);
-    auto translatePatternSet =
-        cicero_compiler::createRegexToCiceroPatterns(context);
-    if (mlir::applyFullConversion(module.getOperation(), translateTarget,
-                                  translatePatternSet)
-            .failed()) {
-        cerr << "Regex dialect to Cicero dialect conversion failed" << endl;
-        return -1;
-    }
+    auto module =
+        cicero_compiler::CiceroMLIRGenerator(context).mlirGen(regexModule);
 
     if (mlir::failed(mlir::verify(module))) {
         module.print(llvm::outs());
