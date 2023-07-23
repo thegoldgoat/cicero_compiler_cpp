@@ -38,11 +38,14 @@ PlaceholderRemover::matchAndRewrite(PlaceholderOp op,
 mlir::LogicalResult
 SimplifyJump::matchAndRewrite(JumpOp op,
                               mlir::PatternRewriter &rewriter) const {
+
     auto targetOp = mlir::SymbolTable::lookupNearestSymbolFrom(
         op.getOperation(), op.getTargetAttr());
 
     if (!targetOp) {
-        op.emitError("Jump operation has invalid target?!?");
+        op.emitError("Jump operation has invalid target: ")
+            << op.getTargetAttr();
+        op.getOperation()->getParentOfType<mlir::ModuleOp>().dump();
         throw std::runtime_error("Jump operation has invalid target?!?");
     }
 
@@ -56,12 +59,14 @@ SimplifyJump::matchAndRewrite(JumpOp op,
     }
 
     if (auto otherOpAccept = mlir::dyn_cast<AcceptOp>(targetOp)) {
-        rewriter.replaceOpWithNewOp<AcceptOp>(op.getOperation());
+        auto replaced = rewriter.replaceOpWithNewOp<AcceptOp>(op.getOperation());
+        replaced.setName(op.getNameAttr());
         return mlir::success();
     }
 
     if (auto otherOpAccept = mlir::dyn_cast<AcceptPartialOp>(targetOp)) {
-        rewriter.replaceOpWithNewOp<AcceptPartialOp>(op.getOperation());
+        auto replaced = rewriter.replaceOpWithNewOp<AcceptPartialOp>(op.getOperation());
+        replaced.setName(op.getNameAttr());
         return mlir::success();
     }
 

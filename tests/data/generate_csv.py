@@ -36,12 +36,19 @@ results = []
 # Loop through each regex in the regex list
 for regex_index, regex in enumerate(regex_list):
     regex_compiled_path = os.path.join(
-        compiled_regexes_path, str(regex_index) + '.txt')
+        compiled_regexes_path, str(regex_index))
     # Compile the regex using the compiler
-    result = subprocess.run([compiler_path, "--regex", regex, "-o",
-                            regex_compiled_path, "--emit=compiled", "--binary-format=hex"])
+    compiler_command_args = [compiler_path, "--regex", regex, "--emit=compiled", "--binary-format=hex", "-o",
+                             ]
+    result = subprocess.run(compiler_command_args + [regex_compiled_path])
     if result.returncode != 0:
         print('Error compiling regex: ' + regex)
+        sys.exit(1)
+    regex_compiled_path_optimized = regex_compiled_path + '_optimized'
+    result = subprocess.run(compiler_command_args +
+                            [regex_compiled_path_optimized, "-Oall"])
+    if result.returncode != 0:
+        print('Error compiling regex with optimizations: ' + regex)
         sys.exit(1)
     for input_str in input_list:
         # Use the `re` module to match the regex with the input

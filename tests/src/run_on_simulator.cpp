@@ -5,7 +5,7 @@
 
 using namespace std;
 
-int main() {
+void run(bool withOptimizations) {
     auto input = parse_csv(REGEX_CSV_PATH);
     Cicero::CiceroMulti cicero;
 
@@ -37,6 +37,9 @@ int main() {
         bool expected = expectedAsString == "1";
 
         if (program != lastProgram) {
+            if (withOptimizations) {
+                program += "_optimized";
+            }
             cicero.setProgram(program.c_str());
             lastProgram = program;
         }
@@ -45,9 +48,15 @@ int main() {
 
         if (actual != expected) {
             cerr << "Test failed: " << program << " " << input << " "
-                 << expectedAsString << endl;
+                 << expectedAsString
+                 << "; withOptimizations = " << withOptimizations << endl;
             assert(false);
         }
     }
+}
+
+int main() {
+    run(false);
+    run(true);
     return 0;
 }

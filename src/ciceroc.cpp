@@ -52,8 +52,10 @@ static cl::opt<enum CiceroBinaryOutputFormat> binaryOutputFormat(
     cl::values(clEnumValN(
         Hex, "hex", "output in hex format (one 16 bits hex value per line))")));
 
+cl::opt<bool> optimizeAll("Oall", cl::desc("Enable all optimizations"));
+
 cl::opt<bool>
-    optimizeJumps("ojump",
+    optimizeJumps("Ojump",
                   cl::desc("Enable optimization for jumps instructions"));
 
 mlir::ModuleOp getRegexModule(mlir::MLIRContext &context);
@@ -140,7 +142,7 @@ int main(int argc, char **argv) {
     patterns.add<cicero_compiler::passes::FlattenSplit>(&context);
     patterns.add<cicero_compiler::passes::PlaceholderRemover>(&context);
 
-    if (optimizeJumps.getValue()) {
+    if (optimizeJumps.getValue() || optimizeAll.getValue()) {
         patterns.add<cicero_compiler::passes::SimplifyJump>(&context);
     }
 
@@ -159,6 +161,13 @@ int main(int argc, char **argv) {
         cerr << "Pattern application failed" << endl;
         return -1;
     }
+
+    if (mlir::failed(mlir::verify(module))) {
+        module.print(llvm::outs());
+        module.emitError("module verification after pattern application failed");
+        return -1;
+    }
+
 
     if (emitAction == DumpCiceroMLIR) {
         module.print(llvm::outs());
