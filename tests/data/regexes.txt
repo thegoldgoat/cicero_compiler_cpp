@@ -1,4 +1,7 @@
 a*b+c{3,6}
+(abc)|abc|a(bc)
+((abc)|abc|a(bc))$
+a(bc)?|de*|gh+
 (((R|K|X)(R|K|X))?.(S|T|X))
 (S|T|X)(..)?(D|B|E|Z|X)
 (C|X).(D|B|N|B|X)(....)?(F|Y|X).(C|X).(C|X)

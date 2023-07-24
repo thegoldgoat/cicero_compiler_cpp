@@ -51,9 +51,9 @@ void CiceroMLIRGenerator::populateConcatenationFather(
         alternationFather->getRegion(0).getBlocks().front().getOperations();
 
     if (concatenations.empty()) {
-        alternationFather->emitError(
+        alternationFather->emitWarning(
             "Concatenation father does not contain any operation?");
-        throw std::runtime_error("");
+        return;
     }
 
     // If we have only one concatenation, just populate the concatenation

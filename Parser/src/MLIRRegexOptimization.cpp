@@ -25,6 +25,29 @@ FactorizeSubregex::matchAndRewrite(RegexParser::dialect::SubRegexOp op,
     return optimizeCommonPrefix(op.getOperation(), rewriter);
 }
 
+/// @brief Get the first operation that has siblings while climbing up the
+/// operation tree
+/// @tparam LimitOpType type of operation that, when encountered, means we have
+/// to stop (we stop at the child of LimitOpType)
+/// @param op the first operation that needs to be checked for siblings. Cannot
+/// be of type LimitOpType
+/// @return the first operation that has siblings while climbing up the
+/// operation tree
+template <typename LimitOpType>
+mlir::Operation *getFirstOpWithSiblings(mlir::Operation *op) {
+    // Check I have no siblings
+    if (!op->getNextNode() && !op->getPrevNode()) {
+        auto parent = op->getParentOp();
+        // Stop at LimitOpType child
+        if (mlir::dyn_cast<LimitOpType>(parent)) {
+            return op;
+        }
+        return getFirstOpWithSiblings<LimitOpType>(parent);
+    }
+
+    return op;
+}
+
 mlir::LogicalResult optimizeCommonPrefix(mlir::Operation *op,
                                          mlir::PatternRewriter &rewriter) {
     mlir::Block &opBlock = op->getRegion(0).front();
@@ -212,6 +235,74 @@ mlir::LogicalResult checkAllOpInVectorAreEqualAndNotNull(vector<OpT> &ops) {
     }
 
     return mlir::success();
+}
+
+mlir::LogicalResult SimplifyLeadingQuantifiers::matchAndRewrite(
+    dialect::RootOp op, mlir::PatternRewriter &rewriter) const {
+    if (!op.getHasSuffix()) {
+        return mlir::failure();
+    }
+
+    // Iterate all concatenations
+    bool oneModification = false;
+    vector<mlir::Operation *> operationToRemove;
+    operationToRemove.reserve(4);
+    for (auto &concat : op.getBody()->getOperations()) {
+        auto concatenationOp = mlir::dyn_cast<dialect::ConcatenationOp>(concat);
+        if (!concatenationOp) {
+            op.emitError("SimplifyLeadingQuantifiers: expected to find "
+                         "ConcatenationOp within RootOp, but found ")
+                << concat;
+            throw std::runtime_error(
+                "SimplifyLeadingQuantifiers: expected to find ConcatenationOp "
+                "within RootOp");
+        }
+
+        // Get last piece
+        auto &lastPiece = concatenationOp.getBody()->back();
+        auto pieceOp = mlir::dyn_cast<dialect::PieceOp>(lastPiece);
+        if (!pieceOp) {
+            op.emitError("SimplifyLeadingQuantifiers: expected to find "
+                         "PieceOp within ConcatenationOp, but found ")
+                << lastPiece;
+            throw std::runtime_error(
+                "SimplifyLeadingQuantifiers: expected to find PieceOp within "
+                "ConcatenationOp");
+        }
+
+        // Check it has quantifier
+        auto &quantifier = pieceOp.getBody()->getOperations().back();
+        auto quantifierOp = mlir::dyn_cast<dialect::QuantifierOp>(quantifier);
+        // If we do not have a quantifier, we cannot optimize.
+        if (!quantifierOp) {
+            continue;
+        }
+        uint64_t min = quantifierOp.getMin();
+        uint64_t max = quantifierOp.getMax();
+        // If min is already equal to max, means we cannot optimize any further
+        if (min == max) {
+            continue;
+        }
+
+        oneModification = true;
+
+        // If min == 0, then directly remove PieceOp
+        if (min == 0) {
+            operationToRemove.push_back(getFirstOpWithSiblings<dialect::RootOp>(
+                pieceOp.getOperation()));
+            continue;
+        }
+
+        quantifierOp.setMax(min);
+    }
+
+    if (oneModification) {
+        for (auto op : operationToRemove) {
+            rewriter.eraseOp(op);
+        }
+        return mlir::success();
+    }
+    return mlir::failure();
 }
 
 } // namespace RegexParser::passes
