@@ -40,7 +40,7 @@ mlir::ModuleOp parseRegexFromFile(mlir::MLIRContext &context,
     if (printFileToStdout) {
         cout << "--- FILE CONTENTS ---\n";
         cout << stream.rdbuf();
-        cout << "--- END FILE      ---\n";
+        cout << "\n--- END FILE      ---\n";
     }
 
     stream.seekg(0, ios::beg);

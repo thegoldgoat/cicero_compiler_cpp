@@ -9,7 +9,7 @@ namespace RegexParser {
 
 mlir::ModuleOp parseRegexFromFile(mlir::MLIRContext &context,
                                   const std::string &regexPath,
-                                  bool printFileToStdout = false);
+                                  bool printFileToStdout = true);
 mlir::ModuleOp parseRegexFromString(mlir::MLIRContext &context,
                                     const std::string &regex);
 

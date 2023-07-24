@@ -11,7 +11,7 @@ namespace RegexParser::passes {
 mlir::LogicalResult optimizeCommonPrefix(mlir::Operation *op,
                                          mlir::PatternRewriter &rewriter);
 template <typename OpT>
-mlir::LogicalResult checkAllOpInVectorAreEqual(vector<OpT> &ops);
+mlir::LogicalResult checkAllOpInVectorAreEqualAndNotNull(vector<OpT> &ops);
 
 mlir::LogicalResult
 FactorizeRoot::matchAndRewrite(RegexParser::dialect::RootOp op,
@@ -58,42 +58,40 @@ mlir::LogicalResult optimizeCommonPrefix(mlir::Operation *op,
         return mlir::failure();
     }
 
-    unsigned int piecesWalked = 0;
-    while (true) {
-        // Check all pieces are the same
-        if (checkAllOpInVectorAreEqual<dialect::PieceOp>(piecesWalkers)
-                .succeeded()) {
-            piecesWalked++;
-            for (size_t i = 0; i < piecesWalkers.size(); i++) {
-                auto nextNode = piecesWalkers[i].getOperation()->getNextNode();
-                if (nextNode == nullptr) {
-                    // TODO: Check that also all the other ones are at the end
-                    // of the block
+    // Number of identical pieces at the beginning of all the concatenations
+    size_t piecesWalked = 0;
+    optional<dialect::ConcatenationOp> factorizedConcatenation;
+    while (checkAllOpInVectorAreEqualAndNotNull<dialect::PieceOp>(piecesWalkers)
+               .succeeded()) {
+        // If first iteration, create the factorized concatenation
+        if (factorizedConcatenation.has_value() == false) {
+            rewriter.setInsertionPointToStart(&opBlock);
+            factorizedConcatenation = rewriter.create<dialect::ConcatenationOp>(
+                rewriter.getUnknownLoc());
+            rewriter.setInsertionPointToStart(
+                factorizedConcatenation->getBody());
+        }
+        // Rewriter insertion point is for sure into the factorized
+        // concatenation body, clone one of the pieces (e.g. the first one)
+        rewriter.clone(*piecesWalkers[0].getOperation());
 
-                    // We reached the end of the block! Remove all the
-                    // concatenations except the first one
-                    for (size_t j = 1; j < concatenations.size(); j++) {
-                        rewriter.eraseOp(concatenations[j].getOperation());
-                    }
-                    return mlir::success();
-                }
-                auto nextPiece = mlir::dyn_cast<dialect::PieceOp>(nextNode);
-                if (nextPiece) {
-                    piecesWalkers[i] = nextPiece;
-                } else {
-                    throw std::runtime_error(
-                        "optimizeCommonPrefix: expected to find PieceOp after "
-                        "PieceOp, but found " +
-                        piecesWalkers[i]
-                            .getOperation()
-                            ->getNextNode()
-                            ->getName()
-                            .getStringRef()
-                            .str());
-                }
+        piecesWalked++;
+        // Advance all the pieces walkers, while removing them from their
+        // respective concatenation
+        for (size_t i = 0; i < piecesWalkers.size(); i++) {
+            auto nextNode = piecesWalkers[i].getOperation()->getNextNode();
+            rewriter.eraseOp(piecesWalkers[i].getOperation());
+            if (nextNode == nullptr) {
+                piecesWalkers[i] = nullptr;
+                continue;
             }
-        } else {
-            break;
+            piecesWalkers[i] = mlir::dyn_cast<dialect::PieceOp>(nextNode);
+            if (!piecesWalkers[i]) {
+                throw std::runtime_error(
+                    "optimizeCommonPrefix: expected to find PieceOp after "
+                    "PieceOp, but found " +
+                    nextNode->getName().getStringRef().str());
+            }
         }
     }
 
@@ -101,44 +99,110 @@ mlir::LogicalResult optimizeCommonPrefix(mlir::Operation *op,
         return mlir::failure();
     }
 
-    // Get the first `piecesWalked` pieces from the any concatenation (e.g. the
-    // first) and put them in a new ConcatenationOp, at the beginning of
-    // `opBlock`. Then, remove the first `piecesWalked` pieces from all the
-    // other concatenations.
+    /*
+     * We have 3 cases now:
+     * 1. All the concatenations have been completely factorized, now their
+     * bodies are all empty. Just remove them and leave the factorized
+     * concatenation. E.G.: A|A => A
+     * 2. Some concatenations have been completely factorized, but not all.
+     * Remove the ones completely factorized, and append (in an optional
+     * subregex) the remaining ones to the factorized concatenation. E.G.:
+     * A|Ax|Ay =>  A(x|y)?
+     * 3. No concatenation has been completely factorized. Append all the
+     * concatenations to the factorized concatenation. E.G. Ax|Ay => A(x|y)
+     */
 
-    rewriter.setInsertionPointToStart(&opBlock);
-    auto newConcatenation =
-        rewriter.create<dialect::ConcatenationOp>(rewriter.getUnknownLoc());
-    auto newConcatenationBody = newConcatenation.getBody();
-    rewriter.setInsertionPointToStart(newConcatenationBody);
-
-    size_t piecesAlreadyMoved = 0;
-    for (auto &op : concatenations[0].getBody()->getOperations()) {
-        rewriter.clone(op);
-        piecesAlreadyMoved++;
-        if (piecesAlreadyMoved == piecesWalked) {
-            break;
+    bool allEmpty = true;
+    bool someEmpty = false;
+    for (auto &c : concatenations) {
+        if (c.getBody()->empty()) {
+            someEmpty = true;
+        } else {
+            allEmpty = false;
         }
+
+        if (someEmpty && !allEmpty)
+            break;
+    }
+    if (allEmpty) {
+        // Case 1, just remove the concatenations
+        for (auto &c : concatenations) {
+            rewriter.eraseOp(c.getOperation());
+        }
+        return mlir::success();
     }
 
-    for (auto &concatenation : concatenations) {
-        for (size_t i = 0; i < piecesWalked; i++) {
-            rewriter.eraseOp(&concatenation.getBody()->front());
+    // Case 2 and 3
+
+    // The non-empty concatenations have to be moved into a new subregex (for
+    // case 2 we attach the optional operation), while being removed from
+    // `opBlock`:
+    /* Example:
+     *
+     * factorizedConcatenation {
+     *     factorizedPiece1 {[...]}
+     *     factorizedPiece2 {[...]}
+     *     factorizedPieceN {[...]}
+     * }
+     * concatenation1 {[...]}
+     * concatenation2 { [empty] }
+     * concatenationN {[...]}
+     *
+     * Becomes:
+     *
+     * factorizedConcatenation {
+     *     factorizedPiece1 {[...]}
+     *     factorizedPiece2 {[...]}
+     *     factorizedPieceN {[...]}
+     *     subregexPiece {
+     *         subregex {
+     *             concatenation1 {[...]}
+     *             [concatenation2 is not copied because it is empty]
+     *             concatenationN {[...]}
+     *         }
+     *         quantifier { min=0, min=1 } <- because concatenation2 is empty
+     *     }
+     * }
+     */
+    rewriter.setInsertionPointToEnd(factorizedConcatenation->getBody());
+    auto subregexPiece =
+        rewriter.create<dialect::PieceOp>(rewriter.getUnknownLoc());
+    rewriter.setInsertionPointToStart(subregexPiece.getBody());
+    auto subregex =
+        rewriter.create<dialect::SubRegexOp>(rewriter.getUnknownLoc());
+    if (someEmpty /* !!! but not allEmpty !!!*/) {
+        // We are in case 2, which means we need to set the subregex as optional
+        rewriter.create<dialect::QuantifierOp>(rewriter.getUnknownLoc(), 0, 1);
+    }
+    rewriter.setInsertionPointToStart(subregex.getBody());
+    for (auto &c : concatenations) {
+        // For case 2, we only copy non-empty concatenations
+        if (!c.getBody()->empty()) {
+            rewriter.clone(*c.getOperation());
         }
+        rewriter.eraseOp(c.getOperation());
     }
 
     return mlir::success();
 }
 template <typename OpT>
-mlir::LogicalResult checkAllOpInVectorAreEqual(vector<OpT> &ops) {
-    assert(ops.size() > 0);
-    if (ops.size() == 1) {
+mlir::LogicalResult checkAllOpInVectorAreEqualAndNotNull(vector<OpT> &ops) {
+    if (ops.size() < 2) {
         return mlir::success();
+    }
+
+    if (ops[0] == nullptr) {
+        return mlir::failure();
     }
 
     auto &firstOp = ops[0];
     auto equivalenceFlags = mlir::OperationEquivalence::Flags::IgnoreLocations;
     for (size_t i = 1; i < ops.size(); i++) {
+
+        if (ops[i] == nullptr) {
+            return mlir::failure();
+        }
+
         if (false == mlir::OperationEquivalence::isEquivalentTo(
                          ops[i].getOperation(), firstOp.getOperation(),
                          mlir::OperationEquivalence::ignoreValueEquivalence,
