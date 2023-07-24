@@ -58,6 +58,10 @@ cl::opt<bool>
     optimizeJumps("Ojump",
                   cl::desc("Enable optimization for jumps instructions"));
 
+cl::opt<bool>
+    optimizeRegex("Oregex",
+                  cl::desc("Enable middle-end optimization on regex syntax"));
+
 mlir::ModuleOp getRegexModule(mlir::MLIRContext &context);
 
 #define CAST_MACRO(resultName, inputOperation, operationType)                  \
@@ -117,8 +121,17 @@ int main(int argc, char **argv) {
 
     auto regexModule = getRegexModule(context);
 
+    if (optimizeRegex.getValue() || optimizeAll.getValue()) {
+        if (RegexParser::optimizeRegex(regexModule).failed()) {
+            regexModule.print(llvm::outs());
+            cerr << "Regex optimization failed" << endl;
+            return -1;
+        }
+    }
+
     if (emitAction == DumpRegexMLIR) {
-        regexModule.print(llvm::outs());
+        mlir::OpPrintingFlags flags;
+        regexModule.print(llvm::outs(), flags);
         return 0;
     }
 
@@ -164,10 +177,10 @@ int main(int argc, char **argv) {
 
     if (mlir::failed(mlir::verify(module))) {
         module.print(llvm::outs());
-        module.emitError("module verification after pattern application failed");
+        module.emitError(
+            "module verification after pattern application failed");
         return -1;
     }
-
 
     if (emitAction == DumpCiceroMLIR) {
         module.print(llvm::outs());
