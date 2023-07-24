@@ -1,42 +1,65 @@
 #include <fstream>
 #include <iostream>
 
+#include "MLIRParser.h"
 #include "RegexDialectWrapper.h"
 #include "antlr4-runtime.h"
 #include "regexLexer.h"
 #include "regexParser.h"
-#include "MLIRParser.h"
 
 using namespace std;
 
+mlir::ModuleOp getModule(mlir::MLIRContext &context, int argc, char **argv);
+
+void printUsages(const char *argv0) {
+    cout << "[1] Usage: " << argv0 << endl;
+    cout << "[2] Usage: " << argv0 << " /path/to/regexfile" << endl;
+    cout << "[3] Usage: " << argv0 << " --regex <regex string>" << endl;
+}
+
 int main(int argc, char **argv) {
-
-    if (argc != 2) {
-        cerr << "Usage: " << argv[0] << " <regex file>" << endl;
-        return 1;
-    }
-
-    string filename = argv[1];
-
-    {
-        ifstream stream;
-        stream.open(filename);
-
-        if (!stream) {
-            return 1;
-        }
-
-        string buffer;
-        cout << "--- Input ---" << endl;
-        while (getline(stream, buffer)) {
-            cout << buffer << endl;
-        }
-        cout << "---  End  ---" << endl;
-    }
-
     mlir::MLIRContext context;
 
     context.getOrLoadDialect<RegexParser::dialect::RegexDialect>();
 
-    RegexParser::parseRegexFromFile(context, filename).dump();
+    auto module = getModule(context, argc, argv);
+
+    cout << "--- MODULE BEFORE OPTIMIZATION ---\n\n";
+
+    module.dump();
+
+    if (RegexParser::optimizeRegex(module).failed()) {
+        cerr << "Optimization failed" << endl;
+        return 1;
+    }
+
+    cout << "\n\n--- MODULE AFTER OPTIMIZATION ---\n\n";
+
+    module.dump();
+}
+
+mlir::ModuleOp getModule(mlir::MLIRContext &context, int argc, char **argv) {
+    string regex;
+    switch (argc) {
+    case 1:
+        cout << "Enter the regex: ";
+        getline(cin, regex);
+        return RegexParser::parseRegexFromString(context, regex);
+        break;
+    case 2:
+        return RegexParser::parseRegexFromFile(context, argv[1]);
+        break;
+    case 3:
+        if (argv[1] != string("--regex")) {
+            printUsages(argv[0]);
+            exit(1);
+        }
+
+        return RegexParser::parseRegexFromString(context, argv[2]);
+        break;
+    default:
+        printUsages(argv[0]);
+        exit(1);
+        break;
+    }
 }
