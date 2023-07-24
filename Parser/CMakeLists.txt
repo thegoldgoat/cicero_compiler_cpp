@@ -136,6 +136,7 @@ add_library(
         ${PROJECT_BINARY_DIR}/include/metachars.h
         src/visitor/MLIRVisitor.cpp
         src/MLIRRegexOptimization.cpp
+        src/passes/SubRegexPasses.cpp
 )
 
 add_dependencies(

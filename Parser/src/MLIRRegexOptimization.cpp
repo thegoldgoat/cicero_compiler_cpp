@@ -22,7 +22,6 @@ FactorizeRoot::matchAndRewrite(RegexParser::dialect::RootOp op,
 mlir::LogicalResult
 FactorizeSubregex::matchAndRewrite(RegexParser::dialect::SubRegexOp op,
                                    mlir::PatternRewriter &rewriter) const {
-    op == op;
     return optimizeCommonPrefix(op.getOperation(), rewriter);
 }
 
