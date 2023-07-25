@@ -16,7 +16,7 @@ class CiceroMLIRGenerator {
     mlir::ModuleOp mlirGen(RegexParser::dialect::RootOp &regexRoot);
 
     void populateConcatenationFather(mlir::Block *block,
-                                   mlir::Operation *alternationFather);
+                                     mlir::Operation *alternationFather);
 
     void populateConcatenation(mlir::Block *block,
                                RegexParser::dialect::ConcatenationOp &op);
@@ -25,7 +25,9 @@ class CiceroMLIRGenerator {
 
     void populateAtom(mlir::Block *block, mlir::Operation &atom);
 
-    void populateQuantifier(mlir::Block *block, RegexParser::dialect::QuantifierOp &op, mlir::Operation &atom);
+    void populateQuantifier(mlir::Block *block,
+                            RegexParser::dialect::QuantifierOp &op,
+                            mlir::Operation &atom);
 
     void populateGroup(mlir::Block *block, RegexParser::dialect::GroupOp &op);
 

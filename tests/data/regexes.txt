@@ -6,6 +6,10 @@ a(bc)?|de*|gh+
 ab|ab$
 ab$|ab$
 ab|ab$|abc
+R*
+^(R*)
+^(ab|ab$|abc)
+(a|R)*
 (((R|K|X)(R|K|X))?.(S|T|X))
 (S|T|X)(..)?(D|B|E|Z|X)
 (C|X).(D|B|N|B|X)(....)?(F|Y|X).(C|X).(C|X)

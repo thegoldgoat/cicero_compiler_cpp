@@ -102,31 +102,6 @@ add_custom_command(
 include_directories(${PROJECT_BINARY_DIR}/include)
 
 add_library(
-        ASTRegexParser
-        SHARED
-        ${PROJECT_BINARY_DIR}/antlr-grammar/regexLexer.cpp
-        ${PROJECT_BINARY_DIR}/antlr-grammar/regexParser.cpp
-        ${PROJECT_SOURCE_DIR}/src/ASTParser.cpp
-        ${PROJECT_SOURCE_DIR}/src/visitor/Visitor.cpp
-        ${PROJECT_BINARY_DIR}/include/metachars.h
-)
-
-target_link_libraries(
-        ASTRegexParser
-        antlr4-runtime
-)
-
-add_executable(
-        astdumper
-        src/ast_dump.cpp
-)
-
-target_link_libraries(
-        astdumper
-        ASTRegexParser
-)
-
-add_library(
         MLIRRegexParser
         SHARED
         ${PROJECT_BINARY_DIR}/antlr-grammar/regexLexer.cpp

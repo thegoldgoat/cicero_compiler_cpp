@@ -12,13 +12,9 @@ namespace RegexParser {
 mlir::ModuleOp MLIRVisitor::visitRoot(regexParser::RootContext *ctx) {
     auto module = mlir::ModuleOp::create(LOCATION_MACRO(ctx));
 
-    bool hasPrefix = ctx->noprefix == nullptr;
-    bool hasSuffix = ctx->nosuffix == nullptr;
-
     builder.setInsertionPointToStart(module.getBody());
 
-    auto root = builder.create<dialect::RootOp>(LOCATION_MACRO(ctx), hasPrefix,
-                                                hasSuffix);
+    auto root = builder.create<dialect::RootOp>(LOCATION_MACRO(ctx));
 
     visitRegExp(root.getBody(), ctx->regExp());
 
@@ -34,18 +30,14 @@ void MLIRVisitor::visitRegExp(mlir::Block *block,
 }
 
 void MLIRVisitor::visitConcatenation(regexParser::ConcatenationContext *ctx) {
-    auto concatenationOp =
-        builder.create<dialect::ConcatenationOp>(LOCATION_MACRO(ctx));
+    bool hasPrefix = ctx->noprefix == nullptr;
+    bool hasSuffix = ctx->nosuffix == nullptr;
+
+    auto concatenationOp = builder.create<dialect::ConcatenationOp>(
+        LOCATION_MACRO(ctx), hasPrefix, hasSuffix);
     for (auto piece : ctx->piece()) {
         builder.setInsertionPointToEnd(concatenationOp.getBody());
         visitPiece(piece);
-    }
-
-    if (ctx->DOLLAR() != nullptr) {
-        builder.setInsertionPointToEnd(concatenationOp.getBody());
-        auto dollarPiece = builder.create<dialect::PieceOp>(LOCATION_MACRO(ctx->DOLLAR()));
-        builder.setInsertionPointToStart(dollarPiece.getBody());
-        builder.create<dialect::DollarOp>(LOCATION_MACRO(ctx->DOLLAR()));
     }
 }
 

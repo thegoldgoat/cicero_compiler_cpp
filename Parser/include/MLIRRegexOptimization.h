@@ -83,9 +83,8 @@ DEFINE_REWRITE_PATTERN_MACRO(SimplifySubregexSinglePiece,
                              RegexParser::dialect::SubRegexOp);
 
 /*
- * When the root operation has `hasSuffix` = true, we can simplify the leading
- * piece of each concatenation that contains a quantifier, and replace that
- * quantifier max with newmax=min
+ * We can simplify the leading piece of each concatenation that contains a
+ * quantifier, and replace that quantifier max with newmax=min
  *
  * For example:
  * `ab{10,20}|cd{30,40}` -> `ab{10,10}|cd{30,30}`

@@ -1,5 +1,4 @@
 #include "MLIRParser.h"
-#include "ASTParser.h"
 #include "MLIRRegexOptimization.h"
 #include "antlr4-runtime.h"
 #include "regexLexer.h"

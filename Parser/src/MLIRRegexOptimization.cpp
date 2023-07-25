@@ -48,6 +48,7 @@ mlir::Operation *getFirstOpWithSiblings(mlir::Operation *op) {
     return op;
 }
 
+// TODO: Rewrite taking into consideration modified ConcatenationOp
 mlir::LogicalResult optimizeCommonPrefix(mlir::Operation *op,
                                          mlir::PatternRewriter &rewriter) {
     mlir::Block &opBlock = op->getRegion(0).front();
@@ -89,7 +90,7 @@ mlir::LogicalResult optimizeCommonPrefix(mlir::Operation *op,
         if (factorizedConcatenation.has_value() == false) {
             rewriter.setInsertionPointToStart(&opBlock);
             factorizedConcatenation = rewriter.create<dialect::ConcatenationOp>(
-                rewriter.getUnknownLoc());
+                rewriter.getUnknownLoc(), false, false);
             rewriter.setInsertionPointToStart(
                 factorizedConcatenation->getBody());
         }
@@ -239,10 +240,6 @@ mlir::LogicalResult checkAllOpInVectorAreEqualAndNotNull(vector<OpT> &ops) {
 
 mlir::LogicalResult SimplifyLeadingQuantifiers::matchAndRewrite(
     dialect::RootOp op, mlir::PatternRewriter &rewriter) const {
-    if (!op.getHasSuffix()) {
-        return mlir::failure();
-    }
-
     // Iterate all concatenations
     bool oneModification = false;
     vector<mlir::Operation *> operationToRemove;

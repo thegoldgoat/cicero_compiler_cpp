@@ -19,19 +19,23 @@ class Regex_Op<string mnemonic, list<Trait> traits = []> : Op<Regex_Dialect, mne
 def RootOp : Regex_Op<"root"> {
     let summary = "Root of the Regex";
     let description = [{
-        Match if the regex matches
+        Match if the regex matches. Contains a list of `ConcatenationOp`.
+        `hasPrefix` specify if the regex starts with an implicit `.*`
+        `hasSuffix` specify if the regex ends with an implicit `.*`
+
+        By default when built, both these values are set to `false`.
     }];
 
     let regions = (region AnyRegion:$rootRegion);
     let arguments = (ins BoolAttr:$hasPrefix, BoolAttr:$hasSuffix);
 
     let builders = [
-        OpBuilder<(ins "bool":$hasPrefix, "bool":$hasSuffix), [{
+        OpBuilder<(ins ), [{
             $_state.addRegion();
             $_state.regions[0]->push_back(new Block());
 
-            $_state.addAttribute(getHasPrefixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), hasPrefix));
-            $_state.addAttribute(getHasSuffixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), hasSuffix));
+            $_state.addAttribute(getHasPrefixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), false));
+            $_state.addAttribute(getHasSuffixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), false));
         }]>
     ];
 
@@ -45,15 +49,21 @@ def RootOp : Regex_Op<"root"> {
 def ConcatenationOp : Regex_Op<"concatenation"> {
     let summary = "Concatenations of Pieces";
     let description = [{
-        Match if all the pieces match in sequence
+        Match if all the pieces match in sequence.
+        `hasPrefix` specify if the concatenation starts with an implicit `.*`
+        `hasSuffix` specify if the concatenation ends with an implicit `.*`
     }];
 
     let regions = (region AnyRegion:$concatenationRegion);
+    let arguments = (ins BoolAttr:$hasPrefix, BoolAttr:$hasSuffix);
 
     let builders = [
-        OpBuilder<(ins ), [{
+        OpBuilder<(ins "bool":$hasPrefix, "bool":$hasSuffix), [{
             $_state.addRegion();
             $_state.regions[0]->push_back(new Block());
+
+            $_state.addAttribute(getHasPrefixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), hasPrefix));
+            $_state.addAttribute(getHasSuffixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), hasSuffix));
         }]>
     ];
 
@@ -140,13 +150,6 @@ def SubRegexOp : Regex_Op<"sub_regex"> {
         mlir::Block *getBody() {
             return &getSubregexRegion().getBlocks().front();
         }
-    }];
-}
-
-def DollarOp : Regex_Op<"dollar"> {
-    let summary = "Match the end of the string";
-    let description = [{
-        Match if the end of the string is reached, can only be added as the last piece of a concatenation, with no quantifiers.
     }];
 }
 

@@ -16,6 +16,15 @@ mlir::ModuleOp
 CiceroMLIRGenerator::mlirGen(RegexParser::dialect::RootOp &regexRoot) {
     auto module = mlir::ModuleOp::create(builder.getUnknownLoc());
 
+    // If root has no children and we have `hasPrefix`, this regex always
+    // matches
+    if (regexRoot.getBody()->empty() && regexRoot.getHasPrefix()) {
+        builder.setInsertionPointToEnd(module.getBody());
+        builder.create<cicero_compiler::dialect::AcceptPartialOp>(
+            builder.getUnknownLoc());
+        return module;
+    }
+
     if (regexRoot.getHasPrefix()) {
         builder.setInsertionPointToStart(module.getBody());
         auto prefixSplitSymbol = std::string("PREFIX_SPLIT");
@@ -33,13 +42,10 @@ CiceroMLIRGenerator::mlirGen(RegexParser::dialect::RootOp &regexRoot) {
 
     populateConcatenationFather(module.getBody(), regexRoot.getOperation());
 
-    if (regexRoot.getHasSuffix()) {
-        builder.create<cicero_compiler::dialect::AcceptPartialOp>(
-            builder.getUnknownLoc());
-    } else {
-        builder.create<cicero_compiler::dialect::AcceptOp>(
-            builder.getUnknownLoc());
-    }
+    builder.setInsertionPointToEnd(module.getBody());
+
+    builder.create<cicero_compiler::dialect::AcceptPartialOp>(
+        builder.getUnknownLoc());
 
     return module;
 }
