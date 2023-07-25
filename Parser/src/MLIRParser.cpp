@@ -56,10 +56,12 @@ mlir::ModuleOp parseRegexFromString(mlir::MLIRContext &context,
 
 mlir::LogicalResult RegexParser::optimizeRegex(mlir::ModuleOp &module) {
     mlir::RewritePatternSet patterns(module.getContext());
-    patterns.add<passes::FactorizeRoot, passes::FactorizeSubregex,
-                 passes::SimplifySubregexNotQuantified,
-                 passes::SimplifySubregexSinglePiece,
-                 passes::SimplifyLeadingQuantifiers>(module.getContext());
+    // patterns.add<passes::FactorizeRoot, passes::FactorizeSubregex,
+    //              passes::SimplifySubregexNotQuantified,
+    //              passes::SimplifySubregexSinglePiece,
+    //              passes::SimplifyLeadingQuantifiers>(module.getContext());
+
+    patterns.add<passes::SimplifyLeadingQuantifiers>(module.getContext());
 
     mlir::FrozenRewritePatternSet frozenPatterns(std::move(patterns));
 

@@ -110,7 +110,7 @@ add_library(
         ${PROJECT_SOURCE_DIR}/src/RegexDialectWrapper.cpp
         ${PROJECT_BINARY_DIR}/include/metachars.h
         src/visitor/MLIRVisitor.cpp
-        src/MLIRRegexOptimization.cpp
+        src/passes/MLIRRegexOptimization.cpp
         src/passes/SubRegexPasses.cpp
 )
 

@@ -240,6 +240,11 @@ mlir::LogicalResult checkAllOpInVectorAreEqualAndNotNull(vector<OpT> &ops) {
 
 mlir::LogicalResult SimplifyLeadingQuantifiers::matchAndRewrite(
     dialect::RootOp op, mlir::PatternRewriter &rewriter) const {
+
+    // If RootOp.hasSuffix == true, there is no need to check that
+    // concatenation.hasSuffix == true
+    bool skipHasSuffixCheck = op.getHasSuffix();
+
     // Iterate all concatenations
     bool oneModification = false;
     vector<mlir::Operation *> operationToRemove;
@@ -253,6 +258,12 @@ mlir::LogicalResult SimplifyLeadingQuantifiers::matchAndRewrite(
             throw std::runtime_error(
                 "SimplifyLeadingQuantifiers: expected to find ConcatenationOp "
                 "within RootOp");
+        }
+
+        // If this concatenation (nor root) has suffix, cannot optimize
+        if (skipHasSuffixCheck == false &&
+            concatenationOp.getHasSuffix() == false) {
+            continue;
         }
 
         // Get last piece
@@ -290,6 +301,7 @@ mlir::LogicalResult SimplifyLeadingQuantifiers::matchAndRewrite(
             continue;
         }
 
+        // Otherwise in general, set newMax = min
         quantifierOp.setMax(min);
     }
 

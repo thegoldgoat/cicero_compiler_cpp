@@ -83,11 +83,13 @@ DEFINE_REWRITE_PATTERN_MACRO(SimplifySubregexSinglePiece,
                              RegexParser::dialect::SubRegexOp);
 
 /*
- * We can simplify the leading piece of each concatenation that contains a
- * quantifier, and replace that quantifier max with newmax=min
+ * When RootOp `hasSuffix` is true, or its children ConcatenationOp `hasSuffix`
+ * is true, if the last piece of such ConcatenationOp has a quantifier, then
+ * assign quantifier.min = quantifier.max. If quantifier.min == 0, then this
+ * piece can be removed.
  *
  * For example:
- * `ab{10,20}|cd{30,40}` -> `ab{10,10}|cd{30,30}`
+ * `ab{10,20}|cd{30,40}|ef{5,7}$` -> `ab{10,10}|cd{30,30}|ef{5,7}`
  * `abcd*|efgh+` -> `abc|efgh`
  */
 DEFINE_REWRITE_PATTERN_MACRO(SimplifyLeadingQuantifiers,
