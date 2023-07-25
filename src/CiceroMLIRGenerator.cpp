@@ -168,6 +168,12 @@ void CiceroMLIRGenerator::populateAtom(mlir::Block *block,
         return;
     }
 
+    if (auto dollarOp = mlir::dyn_cast<DollarOp>(&atom)) {
+        builder.create<cicero_compiler::dialect::AcceptOp>(
+            builder.getUnknownLoc());
+        return;
+    }
+
     throw std::runtime_error("Invalid atom type, found" +
                              atom.getName().getStringRef().str());
 }

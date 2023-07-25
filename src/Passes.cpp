@@ -12,6 +12,15 @@ unsigned int symbolCounter = 0;
 mlir::LogicalResult
 FlattenSplit::matchAndRewrite(SplitOp op,
                               mlir::PatternRewriter &rewriter) const {
+    bool needToAddJump = true;
+
+    // If the split body ends with an accept (e.g. it comes from a concatenation
+    // that ended with $) then we do not need to add the jump, as the accept is
+    // already a `terminator`
+    if (op.getBody()->empty() == false &&
+        mlir::dyn_cast<dialect::AcceptOp>(op.getBody()->back())) {
+        needToAddJump = false;
+    }
 
     std::string splitTarget = "FLATTEN_" + std::to_string(symbolCounter++);
 
@@ -19,8 +28,10 @@ FlattenSplit::matchAndRewrite(SplitOp op,
     rewriter.create<PlaceholderOp>(op.getLoc(), splitTarget);
 
     rewriter.mergeBlocks(op.getBody(), op.getOperation()->getBlock());
-    rewriter.create<JumpOp>(op.getLoc(), op.getSplitReturnAttr());
 
+    if (needToAddJump) {
+        rewriter.create<JumpOp>(op.getLoc(), op.getSplitReturnAttr());
+    }
     rewriter.setInsertionPointAfter(op.getOperation());
     auto flatsplitOp = rewriter.replaceOpWithNewOp<FlatSplitOp>(
         op.getOperation(), splitTarget);
@@ -59,13 +70,15 @@ SimplifyJump::matchAndRewrite(JumpOp op,
     }
 
     if (auto otherOpAccept = mlir::dyn_cast<AcceptOp>(targetOp)) {
-        auto replaced = rewriter.replaceOpWithNewOp<AcceptOp>(op.getOperation());
+        auto replaced =
+            rewriter.replaceOpWithNewOp<AcceptOp>(op.getOperation());
         replaced.setName(op.getNameAttr());
         return mlir::success();
     }
 
     if (auto otherOpAccept = mlir::dyn_cast<AcceptPartialOp>(targetOp)) {
-        auto replaced = rewriter.replaceOpWithNewOp<AcceptPartialOp>(op.getOperation());
+        auto replaced =
+            rewriter.replaceOpWithNewOp<AcceptPartialOp>(op.getOperation());
         replaced.setName(op.getNameAttr());
         return mlir::success();
     }

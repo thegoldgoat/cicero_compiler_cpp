@@ -10,7 +10,7 @@ root: noprefix=HAT? regExp nosuffix=DOLLAR? EOF;
 regExp: concatenation (PIPE concatenation)*;
 
 // Concatenation, list of pieces
-concatenation: pieces+=piece+;
+concatenation: pieces+=piece+ DOLLAR?;
 
 piece: atom quantifier?;
 

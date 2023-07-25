@@ -95,10 +95,6 @@ def QuantifierOp : Regex_Op<"quantifier"> {
     let arguments = (ins SI64Attr:$min, SI64Attr:$max);
 }
 
-// class AtomOp<string mnemonic> : Regex_Op<mnemonic> {
-//     let summary = "Abstract Atom";
-// }
-
 def MatchCharOp : Regex_Op<"match_char"> {
     let summary = "Match a single character";
     let description = [{
@@ -144,6 +140,13 @@ def SubRegexOp : Regex_Op<"sub_regex"> {
         mlir::Block *getBody() {
             return &getSubregexRegion().getBlocks().front();
         }
+    }];
+}
+
+def DollarOp : Regex_Op<"dollar"> {
+    let summary = "Match the end of the string";
+    let description = [{
+        Match if the end of the string is reached, can only be added as the last piece of a concatenation, with no quantifiers.
     }];
 }
 

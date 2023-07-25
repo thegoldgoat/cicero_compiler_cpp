@@ -40,6 +40,13 @@ void MLIRVisitor::visitConcatenation(regexParser::ConcatenationContext *ctx) {
         builder.setInsertionPointToEnd(concatenationOp.getBody());
         visitPiece(piece);
     }
+
+    if (ctx->DOLLAR() != nullptr) {
+        builder.setInsertionPointToEnd(concatenationOp.getBody());
+        auto dollarPiece = builder.create<dialect::PieceOp>(LOCATION_MACRO(ctx->DOLLAR()));
+        builder.setInsertionPointToStart(dollarPiece.getBody());
+        builder.create<dialect::DollarOp>(LOCATION_MACRO(ctx->DOLLAR()));
+    }
 }
 
 void MLIRVisitor::visitPiece(regexParser::PieceContext *ctx) {
