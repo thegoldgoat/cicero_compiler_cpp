@@ -16,6 +16,10 @@ std::vector<std::vector<std::string>> parse_csv(const std::string &filename) {
     while (std::getline(file, line)) {
         std::vector<std::string> row;
         std::stringstream cell;
+        // Remove trailing '\n' or '\r'
+        if (line[line.size() - 1] == '\n' || line[line.size() - 1] == '\r') {
+            line.pop_back();
+        }
 
         bool withinQuotes = false;
         for (std::size_t i = 0; i < line.size() - 1; i++) {
