@@ -7,8 +7,7 @@
 #include "visitor/MLIRVisitor.h"
 #include <functional>
 
-#include "RegexOptimizePass.h"
-#include "mlir/Pass/PassManager.h"
+#include "MyGreedyPass.h"
 #include "mlir/Transforms/Passes.h"
 
 using namespace std;
@@ -58,11 +57,16 @@ mlir::ModuleOp parseRegexFromString(mlir::MLIRContext &context,
 
 mlir::LogicalResult optimizeRegex(mlir::MLIRContext &context,
                                   mlir::ModuleOp &module) {
-    mlir::PassManager pm(&context);
-    mlir::OpPassManager &optimizationsPM = pm.nest<dialect::RootOp>();
-    optimizationsPM.addPass(passes::createRegexOptimizePass(&context));
+    mlir::RewritePatternSet patterns(&context);
+    patterns.add<passes::FactorizeRoot, passes::FactorizeSubregex,
+                 passes::SimplifySubregexNotQuantified,
+                 passes::SimplifySubregexSinglePiece,
+                 passes::SimplifyLeadingQuantifiers>(&context);
 
-    return pm.run(module);
+    return runMyGreedyPass<mlir::ModuleOp>(
+        &context, module.getOperation(),
+        mlir::FrozenRewritePatternSet(std::move(patterns)),
+        mlir::GreedyRewriteConfig());
 }
 
 } // namespace RegexParser

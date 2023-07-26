@@ -6,8 +6,6 @@
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/IR/Verifier.h"
 #include "mlir/Pass/PassManager.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "mlir/Transforms/Passes.h"
 #include "llvm/ADT/ScopedHashTable.h"
 #include <fstream>
 #include <iostream>
@@ -18,6 +16,7 @@
 #include "cicero_const.h"
 
 #include "MLIRParser.h"
+#include "MyGreedyPass.h"
 
 using namespace std;
 namespace cl = llvm::cl;
@@ -138,12 +137,6 @@ int main(int argc, char **argv) {
     auto module =
         cicero_compiler::CiceroMLIRGenerator(context).mlirGen(regexModule);
 
-    if (mlir::failed(mlir::verify(module))) {
-        module.print(llvm::outs());
-        module.emitError("module verification error");
-        return -1;
-    }
-
     // Dump MLIR even before applying the patterns
     if (emitAction == DumpCiceroMLIR) {
         cout << "\n\n--- mlir before any pattern rewrites ---\n\n";
@@ -161,24 +154,12 @@ int main(int argc, char **argv) {
 
     mlir::FrozenRewritePatternSet frozenPatterns(std::move(patterns));
 
-    mlir::GreedyRewriteConfig greedyConfig;
-    // TopDownTraversal is mandatory for split flattening to work, otherwise two
-    // nested splits would have wrong placement, to see the difference try to
-    // compile the regex "^(a|b|c)*" with and without TopDownTraversal
-    greedyConfig.useTopDownTraversal = true;
-
-    if (mlir::applyPatternsAndFoldGreedily(module.getOperation(),
-                                           frozenPatterns, greedyConfig)
+    if (runMyGreedyPass<mlir::ModuleOp>(&context, module.getOperation(),
+                                        std::move(frozenPatterns),
+                                        mlir::GreedyRewriteConfig())
             .failed()) {
         module.print(llvm::outs());
-        cerr << "Pattern application failed" << endl;
-        return -1;
-    }
-
-    if (mlir::failed(mlir::verify(module))) {
-        module.print(llvm::outs());
-        module.emitError(
-            "module verification after pattern application failed");
+        cerr << "Cicero MLIR optimization passes failed" << endl;
         return -1;
     }
 

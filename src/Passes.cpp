@@ -12,6 +12,13 @@ unsigned int symbolCounter = 0;
 mlir::LogicalResult
 FlattenSplit::matchAndRewrite(SplitOp op,
                               mlir::PatternRewriter &rewriter) const {
+
+    // We must flatten "outer" splits first, hence can only flatten if my parent is ModuleOp
+    auto parentOp = op.getOperation()->getParentOp();
+    if (!mlir::dyn_cast<mlir::ModuleOp>(parentOp)) {
+        return mlir::failure();
+    }
+
     bool needToAddJump = true;
 
     // If the split body ends with an accept (e.g. it comes from a concatenation
