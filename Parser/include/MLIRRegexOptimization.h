@@ -16,8 +16,15 @@ namespace RegexParser::passes {
 
 /*
  * Factorization: Factorize root/subregex which alternates between concatenation
- * with same prefix, for example `this|that` -> `th(is|at)` but also
- * `this|that|th` -> `th(is|at)?`.
+ * with same prefix, for example:
+ * 1. `this|that` -> `th(is|at)`
+ * 2. `this|that|th` -> `th(is|at)?`
+ * 3. `^this|^that` -> `^th(is|at)`
+ * 4. `this|^that` -> `this|^that`
+ * 5. `ab|ab$` -> `ab` <- note that only root concatenation can have `$`, hence
+ * for those it can be simplified
+ * 6. `ab|ab$|abc` -> `ab` <- same as above
+ * 7. `ab|ab` -> `ab`
  */
 
 DEFINE_REWRITE_PATTERN_MACRO(FactorizeRoot, RegexParser::dialect::RootOp);

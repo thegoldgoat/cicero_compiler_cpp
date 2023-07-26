@@ -56,12 +56,8 @@ mlir::ModuleOp parseRegexFromString(mlir::MLIRContext &context,
 
 mlir::LogicalResult RegexParser::optimizeRegex(mlir::ModuleOp &module) {
     mlir::RewritePatternSet patterns(module.getContext());
-    // patterns.add<passes::FactorizeRoot, passes::FactorizeSubregex,
-    //              passes::SimplifySubregexNotQuantified,
-    //              passes::SimplifySubregexSinglePiece,
-    //              passes::SimplifyLeadingQuantifiers>(module.getContext());
-
-    patterns.add<passes::SimplifySubregexNotQuantified,
+    patterns.add<passes::FactorizeRoot, passes::FactorizeSubregex,
+                 passes::SimplifySubregexNotQuantified,
                  passes::SimplifySubregexSinglePiece,
                  passes::SimplifyLeadingQuantifiers>(module.getContext());
 

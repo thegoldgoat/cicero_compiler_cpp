@@ -52,13 +52,35 @@ mlir::Operation *getFirstOpWithSiblings(mlir::Operation *op) {
 mlir::LogicalResult optimizeCommonPrefix(mlir::Operation *op,
                                          mlir::PatternRewriter &rewriter) {
     mlir::Block &opBlock = op->getRegion(0).front();
+
+    if (opBlock.empty()) {
+        return mlir::failure();
+    }
+
+    bool commonHasPrefix;
+    if (auto firstConcat =
+            mlir::dyn_cast<dialect::ConcatenationOp>(opBlock.front())) {
+        commonHasPrefix = firstConcat.getHasPrefix();
+    } else {
+        op->emitError("optimizeCommonPrefix: expected to find ConcatenationOp, "
+                      "but found ")
+            << opBlock.front();
+        throw runtime_error("");
+    }
+
     vector<dialect::ConcatenationOp> concatenations;
-    concatenations.reserve(10);
     vector<dialect::PieceOp> piecesWalkers;
+    concatenations.reserve(10);
     piecesWalkers.reserve(10);
 
     for (auto &op : opBlock) {
         if (auto concat = mlir::dyn_cast<dialect::ConcatenationOp>(op)) {
+            // All concatenation must have the same `hasPrefix` flag, otherwise
+            // we cannot factorize.
+            if (concat.getHasPrefix() != commonHasPrefix) {
+                return mlir::failure();
+            }
+
             auto &maybePieceOp = concat.getBody()->front();
             if (auto pieceOp = mlir::dyn_cast<dialect::PieceOp>(maybePieceOp)) {
                 piecesWalkers.emplace_back(std::move(pieceOp));
@@ -90,7 +112,7 @@ mlir::LogicalResult optimizeCommonPrefix(mlir::Operation *op,
         if (factorizedConcatenation.has_value() == false) {
             rewriter.setInsertionPointToStart(&opBlock);
             factorizedConcatenation = rewriter.create<dialect::ConcatenationOp>(
-                rewriter.getUnknownLoc(), false, false);
+                rewriter.getUnknownLoc(), commonHasPrefix, true);
             rewriter.setInsertionPointToStart(
                 factorizedConcatenation->getBody());
         }
