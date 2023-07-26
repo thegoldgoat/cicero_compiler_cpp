@@ -4,7 +4,9 @@ options {
 }
 
 // Parser root context, ensures all input is matched
-root: noprefix=HAT? regExp nosuffix=DOLLAR? EOF;
+root:
+	noprefix=HAT? LPAR regExp RPAR nosuffix=DOLLAR? EOF
+	| regExp EOF;
 
 // Regular Expression, alternatives of concatenations
 regExp: concatenation (PIPE concatenation)*;

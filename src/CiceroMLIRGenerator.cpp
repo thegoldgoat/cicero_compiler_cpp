@@ -16,6 +16,13 @@ mlir::ModuleOp
 CiceroMLIRGenerator::mlirGen(RegexParser::dialect::RootOp &regexRoot) {
     auto module = mlir::ModuleOp::create(builder.getUnknownLoc());
 
+    // If root has no children, we accept anything!
+    if (regexRoot.getBody()->empty()) {
+        builder.setInsertionPointToStart(module.getBody());
+        builder.create<dialect::AcceptPartialOp>(regexRoot.getLoc());
+        return module;
+    }
+
     if (regexRoot.getHasPrefix()) {
         builder.setInsertionPointToStart(module.getBody());
         auto prefixSplitSymbol = std::string("PREFIX_SPLIT");
