@@ -10,6 +10,8 @@ ab|ab$|abc
 ^(ab|ab$)
 ^((ab$|ab$)hi)
 R*
+\w|\w
+\w|\d+|[abc]{3,4}
 (R*|R*$)
 R*$
 (R*)$

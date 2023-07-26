@@ -17,6 +17,14 @@ void CiceroDialect::initialize() {
         >();
 }
 
+#include "MatchCharHelper.h"
+
+DEFINE_MATCH_CHAR_PARSER_MACRO(MatchCharOp)
+DEFINE_MATCH_CHAR_PRINTER_MACRO(MatchCharOp)
+
+DEFINE_MATCH_CHAR_PARSER_MACRO(NotMatchCharOp)
+DEFINE_MATCH_CHAR_PRINTER_MACRO(NotMatchCharOp)
+
 LogicalResult myLookup(SymbolTableCollection &symbolTable, Operation *op,
                        FlatSymbolRefAttr &symbol) {
     while (op && !op->hasTrait<OpTrait::SymbolTable>()) {

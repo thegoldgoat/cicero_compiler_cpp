@@ -19,3 +19,8 @@ void RegexDialect::initialize() {
 
 #define GET_OP_CLASSES
 #include "RegexOps.cpp.inc"
+
+#include "MatchCharHelper.h"
+
+DEFINE_MATCH_CHAR_PARSER_MACRO(MatchCharOp)
+DEFINE_MATCH_CHAR_PRINTER_MACRO(MatchCharOp)

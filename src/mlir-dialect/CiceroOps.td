@@ -29,12 +29,20 @@ def AcceptOp : Cicero_Op<"accept"> {
     let description = [{
         If we are at the end of the string, then the input is accepted, otherwise thread is killed.
     }];
+
+    let assemblyFormat = [{
+        attr-dict
+    }];
 }
 
 def AcceptPartialOp : Cicero_Op<"accept_partial"> {
     let summary = "Always accepts the input";
     let description = [{
         Input gets accepted, regardless of the current position in the string.
+    }];
+
+    let assemblyFormat = [{
+        attr-dict
     }];
 }
 
@@ -65,6 +73,10 @@ def SplitOp : Cicero_Op<"split", [SymbolTable, NoTerminator, DeclareOpInterfaceM
 
         bool isOptionalSymbol() { return true; }
     }];
+
+    let assemblyFormat = [{
+        attr-dict regions
+    }];
 }
 
 def FlatSplitOp : Cicero_Op<"flat_split", [DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
@@ -76,6 +88,10 @@ def FlatSplitOp : Cicero_Op<"flat_split", [DeclareOpInterfaceMethods<SymbolUserO
     }];
 
     let arguments = (ins FlatSymbolRefAttr:$splitTarget);
+
+    let assemblyFormat = [{
+        attr-dict
+    }];
 }
 
 def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
@@ -85,12 +101,20 @@ def JumpOp : Cicero_Op<"jump", [DeclareOpInterfaceMethods<SymbolUserOpInterface>
     }];
 
     let arguments = (ins FlatSymbolRefAttr:$target);
+
+    let assemblyFormat = [{
+        attr-dict
+    }];
 }
 
 def MatchAnyOp : Cicero_Op<"match_any"> {
     let summary = "Matches any character";
     let description = [{
         Matches any character, advances the input by one character.
+    }];
+
+    let assemblyFormat = [{
+        attr-dict
     }];
 }
 
@@ -101,6 +125,8 @@ def MatchCharOp : Cicero_Op<"match_char"> {
     }];
 
     let arguments = (ins I8Attr:$targetChar);
+
+    let hasCustomAssemblyFormat = 1;
 }
 
 def NotMatchCharOp : Cicero_Op<"not_match_char"> {
@@ -111,6 +137,8 @@ def NotMatchCharOp : Cicero_Op<"not_match_char"> {
     }];
 
     let arguments = (ins I8Attr:$targetChar);
+
+    let hasCustomAssemblyFormat = 1;
 }
 
 def PlaceholderOp : Cicero_Op<"placeholder"> {
@@ -128,6 +156,10 @@ def PlaceholderOp : Cicero_Op<"placeholder"> {
 
     let extraClassDeclaration = [{
         bool isOptionalSymbol() { return true; }
+    }];
+
+    let assemblyFormat = [{
+        attr-dict
     }];
 }
 

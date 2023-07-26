@@ -29,7 +29,7 @@ FlattenSplit::matchAndRewrite(SplitOp op,
         needToAddJump = false;
     }
 
-    std::string splitTarget = "FLATTEN_" + std::to_string(symbolCounter++);
+    std::string splitTarget = "F" + std::to_string(symbolCounter++);
 
     rewriter.setInsertionPointToEnd(op.getOperation()->getBlock());
     rewriter.create<PlaceholderOp>(op.getLoc(), splitTarget);

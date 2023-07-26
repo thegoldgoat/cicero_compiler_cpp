@@ -42,57 +42,44 @@ to the actual body of the split, which originally was the body of the `cicero.sp
 ```mlir
 
 // Example: (ab|cd)|ef
-
-// === Module before canonicalization ===
+--- mlir before any pattern rewrites ---
 
 module {
-  "cicero.split"() ({
-    "cicero.split"() ({
-      // Match a
-      "cicero.match_char"() {targetChar = 97 : i8} : () -> ()
-      // Match b
-      "cicero.match_char"() {targetChar = 98 : i8} : () -> ()
-      "cicero.jump"() {target = @S1} : () -> ()
-    }) {splitReturn = @S1} : () -> ()
-    // Match c
-    "cicero.match_char"() {targetChar = 99 : i8} : () -> ()
-    // Match d
-    "cicero.match_char"() {targetChar = 100 : i8} : () -> ()
-    "cicero.placeholder"() {sym_name = "S1"} : () -> ()
-    "cicero.jump"() {target = @S0} : () -> ()
-  }) {splitReturn = @S0} : () -> ()
-  // Match e
-  "cicero.match_char"() {targetChar = 101 : i8} : () -> ()
-  // Match f
-  "cicero.match_char"() {targetChar = 102 : i8} : () -> ()
-  "cicero.placeholder"() {sym_name = "S0"} : () -> ()
-  "cicero.accept"() : () -> ()
+  cicero.split {splitReturn = @PREFIX_SPLIT, sym_name = "PREFIX_SPLIT"} {
+    cicero.match_any
+  }
+  cicero.split {splitReturn = @S0} {
+    cicero.split {splitReturn = @S1} {
+      cicero.match_char a
+      cicero.match_char b
+    }
+    cicero.match_char c
+    cicero.match_char d
+    cicero.placeholder {sym_name = "S1"}
+  }
+  cicero.match_char e
+  cicero.match_char f
+  cicero.placeholder {sym_name = "S0"}
+  cicero.accept_partial
 }
 
-// === Module after canonicalization ===
+--- mlir after pattern rewrites      ---
 
 module {
-  "cicero.flat_split"() {splitTarget = @FLATTEN_0} : () -> ()
-  // Match e
-  "cicero.match_char"() {targetChar = 101 : i8} : () -> ()
-  // Match f
-  "cicero.match_char"() {targetChar = 102 : i8} : () -> ()
-  "cicero.placeholder"() {sym_name = "S0"} : () -> ()
-  "cicero.accept"() : () -> ()
-  "cicero.placeholder"() {sym_name = "FLATTEN_0"} : () -> ()
-  "cicero.flat_split"() {splitTarget = @FLATTEN_1} : () -> ()
-  // Match c
-  "cicero.match_char"() {targetChar = 99 : i8} : () -> ()
-  // Match d
-  "cicero.match_char"() {targetChar = 100 : i8} : () -> ()
-  "cicero.placeholder"() {sym_name = "S1"} : () -> ()
-  "cicero.jump"() {target = @S0} : () -> ()
-  "cicero.placeholder"() {sym_name = "FLATTEN_1"} : () -> ()
-  // Match a
-  "cicero.match_char"() {targetChar = 97 : i8} : () -> ()
-  // Match b
-  "cicero.match_char"() {targetChar = 98 : i8} : () -> ()
-  "cicero.jump"() {target = @S1} : () -> ()
+  cicero.flat_split {splitTarget = @F2, sym_name = "PREFIX_SPLIT"}
+  cicero.flat_split {splitTarget = @F0}
+  cicero.match_char e
+  cicero.match_char f
+  cicero.accept_partial {sym_name = "S0"}
+  cicero.flat_split {splitTarget = @F1, sym_name = "F0"}
+  cicero.match_char c
+  cicero.match_char d
+  cicero.jump {sym_name = "S1", target = @S0}
+  cicero.match_char {sym_name = "F1"} a
+  cicero.match_char b
+  cicero.jump {target = @S1}
+  cicero.match_any {sym_name = "F2"}
+  cicero.jump {target = @PREFIX_SPLIT}
 }
 
 ```

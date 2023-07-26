@@ -40,6 +40,10 @@ def RootOp : Regex_Op<"root", [IsolatedFromAbove]> {
             return &getRootRegion().getBlocks().front();
         }
     }];
+
+    let assemblyFormat = [{
+        attr-dict regions
+    }];
 }
 
 def ConcatenationOp : Regex_Op<"concatenation"> {
@@ -61,6 +65,10 @@ def ConcatenationOp : Regex_Op<"concatenation"> {
         mlir::Block *getBody() {
             return &getConcatenationRegion().getBlocks().front();
         }
+    }];
+
+    let assemblyFormat = [{
+        attr-dict regions
     }];
 }
 
@@ -84,6 +92,10 @@ def PieceOp : Regex_Op<"piece"> {
             return &getPieceRegion().getBlocks().front();
         }
     }];
+
+    let assemblyFormat = [{
+        attr-dict regions
+    }];
 }
 
 def QuantifierOp : Regex_Op<"quantifier"> {
@@ -93,6 +105,10 @@ def QuantifierOp : Regex_Op<"quantifier"> {
     }];
 
     let arguments = (ins SI64Attr:$min, SI64Attr:$max);
+
+    let assemblyFormat = [{
+        attr-dict `from` $min `to` $max
+    }];
 }
 
 def MatchCharOp : Regex_Op<"match_char"> {
@@ -102,12 +118,18 @@ def MatchCharOp : Regex_Op<"match_char"> {
     }];
 
     let arguments = (ins I8Attr:$targetChar);
+
+    let hasCustomAssemblyFormat = 1;
 }
 
 def MatchAnyCharOp : Regex_Op<"match_any_char"> {
     let summary = "Match any character";
     let description = [{
         Match any character
+    }];
+
+    let assemblyFormat = [{
+        attr-dict
     }];
 }
 
@@ -118,6 +140,10 @@ def GroupOp : Regex_Op<"group"> {
     }];
 
     let arguments = (ins DenseBoolArrayAttr:$targetChars);
+
+    let assemblyFormat = [{
+        attr-dict $targetChars
+    }];
 }
 
 
@@ -141,12 +167,20 @@ def SubRegexOp : Regex_Op<"sub_regex"> {
             return &getSubregexRegion().getBlocks().front();
         }
     }];
+
+    let assemblyFormat = [{
+        attr-dict regions
+    }];
 }
 
 def DollarOp : Regex_Op<"dollar"> {
     let summary = "Match the end of the string";
     let description = [{
         Match if the end of the string is reached, can only be added as the last piece of a concatenation, with no quantifiers.
+    }];
+
+    let assemblyFormat = [{
+        attr-dict
     }];
 }
 
