@@ -24,6 +24,12 @@ int main(int argc, char **argv) {
 
     auto module = getModule(context, argc, argv);
 
+    if (module.verify().failed()) {
+        module.dump();
+        cerr << "Module (before optimization) verification failed" << endl;
+        return 1;
+    }
+
     cout << "--- MODULE BEFORE OPTIMIZATION ---\n\n";
 
     module.dump();
@@ -34,6 +40,12 @@ int main(int argc, char **argv) {
     }
 
     cout << "\n\n--- MODULE AFTER OPTIMIZATION ---\n\n";
+
+    if (module.verify().failed()) {
+        module.dump();
+        cerr << "Module (after optimization) verification failed" << endl;
+        return 1;
+    }
 
     module.dump();
 }

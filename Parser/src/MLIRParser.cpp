@@ -61,7 +61,9 @@ mlir::LogicalResult RegexParser::optimizeRegex(mlir::ModuleOp &module) {
     //              passes::SimplifySubregexSinglePiece,
     //              passes::SimplifyLeadingQuantifiers>(module.getContext());
 
-    patterns.add<passes::SimplifyLeadingQuantifiers>(module.getContext());
+    patterns.add<passes::SimplifySubregexNotQuantified,
+                 passes::SimplifySubregexSinglePiece,
+                 passes::SimplifyLeadingQuantifiers>(module.getContext());
 
     mlir::FrozenRewritePatternSet frozenPatterns(std::move(patterns));
 

@@ -301,6 +301,12 @@ mlir::LogicalResult SimplifyLeadingQuantifiers::matchAndRewrite(
             continue;
         }
 
+        // If min == 1, then directly remove QuantifierOp
+        if (min == 1) {
+            rewriter.eraseOp(&quantifier);
+            continue;
+        }
+
         // Otherwise in general, set newMax = min
         quantifierOp.setMax(min);
     }

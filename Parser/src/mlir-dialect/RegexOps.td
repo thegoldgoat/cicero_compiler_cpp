@@ -30,12 +30,12 @@ def RootOp : Regex_Op<"root"> {
     let arguments = (ins BoolAttr:$hasPrefix, BoolAttr:$hasSuffix);
 
     let builders = [
-        OpBuilder<(ins ), [{
+        OpBuilder<(ins "bool":$hasPrefix, "bool":$hasSuffix), [{
             $_state.addRegion();
             $_state.regions[0]->push_back(new Block());
 
-            $_state.addAttribute(getHasPrefixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), false));
-            $_state.addAttribute(getHasSuffixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), false));
+            $_state.addAttribute(getHasPrefixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), hasPrefix));
+            $_state.addAttribute(getHasSuffixAttrName($_state.name), ::mlir::BoolAttr::get($_builder.getContext(), hasSuffix));
         }]>
     ];
 

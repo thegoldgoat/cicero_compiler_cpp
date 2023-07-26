@@ -4,12 +4,16 @@ options {
 }
 
 // Parser root context, ensures all input is matched
-root: regExp EOF;
+root:
+	noprefix=HAT? LPAR regExp RPAR nosuffix=DOLLAR? EOF
+	| regExp EOF;
 
 // Regular Expression, alternatives of concatenations
 regExp: concatenation (PIPE concatenation)*;
 
 // Concatenation, list of pieces
+// NOTE that only the grandchildren of root can have HAT or DOLLAR,
+// but this is checker in the visitor to keep code simpler
 concatenation: noprefix=HAT? pieces+=piece+ nosuffix=DOLLAR?;
 
 piece: atom quantifier?;

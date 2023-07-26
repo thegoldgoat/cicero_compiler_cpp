@@ -14,24 +14,42 @@ mlir::ModuleOp MLIRVisitor::visitRoot(regexParser::RootContext *ctx) {
 
     builder.setInsertionPointToStart(module.getBody());
 
-    auto root = builder.create<dialect::RootOp>(LOCATION_MACRO(ctx));
+    bool hasPrefix = ctx->noprefix == nullptr;
+    bool hasSuffix = ctx->nosuffix == nullptr;
+    auto root = builder.create<dialect::RootOp>(LOCATION_MACRO(ctx), hasPrefix,
+                                                hasSuffix);
 
-    visitRegExp(root.getBody(), ctx->regExp());
+    visitRegExp(root.getBody(), ctx->regExp(), true);
 
     return module;
 }
 
 void MLIRVisitor::visitRegExp(mlir::Block *block,
-                              regexParser::RegExpContext *ctx) {
+                              regexParser::RegExpContext *ctx,
+                              bool isFatherRoot) {
     for (auto concatenation : ctx->concatenation()) {
         builder.setInsertionPointToEnd(block);
-        visitConcatenation(concatenation);
+        visitConcatenation(concatenation, isFatherRoot);
     }
 }
 
-void MLIRVisitor::visitConcatenation(regexParser::ConcatenationContext *ctx) {
+void MLIRVisitor::visitConcatenation(regexParser::ConcatenationContext *ctx,
+                                     bool isFatherRoot) {
     bool hasPrefix = ctx->noprefix == nullptr;
     bool hasSuffix = ctx->nosuffix == nullptr;
+
+    // Only if this concatenation is the child of the root regex I can use
+    // `^` or `$`
+    // This could have been forced by the grammar, but I prefer to keep it clean
+    // and simple and to do the check here
+    if (!isFatherRoot) {
+        if (!hasPrefix || !hasSuffix) {
+            throw std::runtime_error("Implicit `^` or `$` in non-root "
+                                     "concatenation is not allowed: " +
+                                     ctx->getText() + " at " +
+                                     ctx->getSourceInterval().toString());
+        }
+    }
 
     auto concatenationOp = builder.create<dialect::ConcatenationOp>(
         LOCATION_MACRO(ctx), hasPrefix, hasSuffix);
@@ -76,7 +94,7 @@ void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
     if (ctx->LPAR()) {
         auto subregex =
             builder.create<dialect::SubRegexOp>(LOCATION_MACRO(ctx));
-        visitRegExp(subregex.getBody(), ctx->regExp());
+        visitRegExp(subregex.getBody(), ctx->regExp(), false);
         return;
     }
 
