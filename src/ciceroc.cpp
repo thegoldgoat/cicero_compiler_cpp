@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
     auto regexModule = getRegexModule(context);
 
     if (optimizeRegex.getValue() || optimizeAll.getValue()) {
-        if (RegexParser::optimizeRegex(regexModule).failed()) {
+        if (RegexParser::optimizeRegex(context, regexModule).failed()) {
             regexModule.print(llvm::outs());
             cerr << "Regex optimization failed" << endl;
             return -1;

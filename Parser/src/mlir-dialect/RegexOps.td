@@ -14,9 +14,9 @@ def Regex_Dialect : Dialect {
 }
 
 // Base operation definition
-class Regex_Op<string mnemonic, list<Trait> traits = []> : Op<Regex_Dialect, mnemonic, traits> {}
+class Regex_Op<string mnemonic, list<Trait> traits = []> : Op<Regex_Dialect, mnemonic, !listconcat(traits, [NoTerminator])> {}
 
-def RootOp : Regex_Op<"root"> {
+def RootOp : Regex_Op<"root", [IsolatedFromAbove]> {
     let summary = "Root of the Regex";
     let description = [{
         Match if the regex matches

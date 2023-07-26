@@ -13,6 +13,7 @@ mlir::ModuleOp parseRegexFromFile(mlir::MLIRContext &context,
 mlir::ModuleOp parseRegexFromString(mlir::MLIRContext &context,
                                     const std::string &regex);
 
-mlir::LogicalResult optimizeRegex(mlir::ModuleOp &module);
+mlir::LogicalResult optimizeRegex(mlir::MLIRContext &context,
+                                  mlir::ModuleOp &module);
 
 } // namespace RegexParser

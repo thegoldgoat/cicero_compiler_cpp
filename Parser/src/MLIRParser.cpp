@@ -7,7 +7,9 @@
 #include "visitor/MLIRVisitor.h"
 #include <functional>
 
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "RegexOptimizePass.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/Passes.h"
 
 using namespace std;
 
@@ -53,16 +55,14 @@ mlir::ModuleOp parseRegexFromString(mlir::MLIRContext &context,
     const std::string filename = "string in memory";
     return parseRegexImpl(context, antlr4::ANTLRInputStream(regex), filename);
 }
-} // namespace RegexParser
 
-mlir::LogicalResult RegexParser::optimizeRegex(mlir::ModuleOp &module) {
-    mlir::RewritePatternSet patterns(module.getContext());
-    patterns.add<passes::FactorizeRoot, passes::FactorizeSubregex,
-                 passes::SimplifySubregexNotQuantified,
-                 passes::SimplifySubregexSinglePiece,
-                 passes::SimplifyLeadingQuantifiers>(module.getContext());
+mlir::LogicalResult optimizeRegex(mlir::MLIRContext &context,
+                                  mlir::ModuleOp &module) {
+    mlir::PassManager pm(&context);
+    mlir::OpPassManager &optimizationsPM = pm.nest<dialect::RootOp>();
+    optimizationsPM.addPass(passes::createRegexOptimizePass(&context));
 
-    mlir::FrozenRewritePatternSet frozenPatterns(std::move(patterns));
-
-    return mlir::applyPatternsAndFoldGreedily(module, frozenPatterns);
+    return pm.run(module);
 }
+
+} // namespace RegexParser
