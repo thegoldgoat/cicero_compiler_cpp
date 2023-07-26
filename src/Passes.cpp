@@ -13,7 +13,8 @@ mlir::LogicalResult
 FlattenSplit::matchAndRewrite(SplitOp op,
                               mlir::PatternRewriter &rewriter) const {
 
-    // We must flatten "outer" splits first, hence can only flatten if my parent is ModuleOp
+    // We must flatten "outer" splits first, hence can only flatten if my parent
+    // is ModuleOp
     auto parentOp = op.getOperation()->getParentOp();
     if (!mlir::dyn_cast<mlir::ModuleOp>(parentOp)) {
         return mlir::failure();
@@ -27,6 +28,15 @@ FlattenSplit::matchAndRewrite(SplitOp op,
     if (op.getBody()->empty() == false &&
         mlir::dyn_cast<dialect::AcceptOp>(op.getBody()->back())) {
         needToAddJump = false;
+    }
+
+    // If the split body is empty (e.g. a?b) then we can just set the
+    // `splitTarget` of `FlattenSplitOp` to the `splitReturn` of SplitOp
+    if (op.getBody()->empty()) {
+        auto flatsplitOp = rewriter.replaceOpWithNewOp<FlatSplitOp>(
+            op.getOperation(), op.getSplitReturnAttr());
+        flatsplitOp.setName(op.getNameAttr());
+        return mlir::success();
     }
 
     std::string splitTarget = "F" + std::to_string(symbolCounter++);
