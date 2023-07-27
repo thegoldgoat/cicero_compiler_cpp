@@ -22,6 +22,9 @@ int main(int argc, char **argv) {
     }
 
     string inputFilename = argv[1];
+    if (inputFilename == "-") {
+        inputFilename = "/dev/stdin";
+    }
     CiceroBinaryOutputFormat binaryInputFormat;
 
     if (argc < 3) {
