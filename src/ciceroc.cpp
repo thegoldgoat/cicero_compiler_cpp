@@ -105,7 +105,11 @@ int main(int argc, char **argv) {
             return -1;
         }
 
-        outputFile = ofstream(outputFilename);
+        if (outputFilename == "-") {
+            outputFile = ofstream("/dev/stdout");
+        } else {
+            outputFile = ofstream(outputFilename);
+        }
 
         if (!outputFile.is_open()) {
             cerr << "Error opening output file: " << outputFilename << endl;

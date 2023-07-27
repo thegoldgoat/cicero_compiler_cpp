@@ -35,7 +35,6 @@ include_directories(Parser/include)
 
 add_executable(
   ciceroc
-  ${CMAKE_CURRENT_BINARY_DIR}/src/mlir-dialect/Dialect.cpp.inc
   src/ciceroc.cpp
   src/mlir-dialect/CiceroDialectWrapper.cpp
   src/CiceroMLIRGenerator.cpp
