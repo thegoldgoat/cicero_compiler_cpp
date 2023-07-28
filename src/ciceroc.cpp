@@ -12,7 +12,7 @@
 
 #include "CiceroMLIRGenerator.h"
 
-#include "Passes.h"
+#include "CiceroPasses.h"
 #include "cicero_const.h"
 
 #include "MLIRParser.h"
