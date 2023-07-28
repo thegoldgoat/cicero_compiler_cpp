@@ -1,4 +1,5 @@
 #include "CiceroDialectWrapper.h"
+#include "cicero_macros.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
@@ -63,18 +64,14 @@ cl::opt<bool>
 
 mlir::ModuleOp getRegexModule(mlir::MLIRContext &context);
 
-#define CAST_MACRO(resultName, inputOperation, operationType)                  \
-    auto resultName = mlir::dyn_cast<operationType>(inputOperation)
-
 void outputToFileBinaryFormat(uint16_t opCode, uint16_t opData,
                               ofstream &outputStream);
 void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
                            ofstream &outputStream);
 
 /// @brief Output the corresponding instruction in the dot format
-/// @param instructionName The name of the instruction e.g. MatchChar
-/// @param instructionArgument The argument (data) of the instruction e.g. for
-/// MatchChar argument is the char to match
+/// @param nodeLabel The label the node should have, e.g. "Split"
+/// @param nodeColor The color the node should have
 /// @param instructionIndex The address of the instruction in the program
 /// instruction memory
 /// @param targetIndex For jump, the jump target address. For split, the split
@@ -82,8 +79,7 @@ void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
 /// @param linkToNext Specify if we need to link to the next instruction, true
 /// for everything except for accept/accept_partial/jump/last instruction of
 /// program
-void outputDotFormat(string instructionName,
-                     optional<string> instructionArgument,
+void outputDotFormat(string nodeLabel, string nodeColor,
                      unsigned int instructionIndex,
                      optional<unsigned int> targetIndex, bool linkToNext);
 
@@ -167,6 +163,18 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    mlir::RewritePatternSet patterns2(&context);
+    patterns2.add<cicero_compiler::passes::SplitMerger>(&context);
+    frozenPatterns = mlir::FrozenRewritePatternSet(std::move(patterns2));
+    if (runMyGreedyPass<mlir::ModuleOp>(&context, module.getOperation(),
+                                        std::move(frozenPatterns),
+                                        mlir::GreedyRewriteConfig())
+            .failed()) {
+        module.print(llvm::outs());
+        cerr << "Cicero MLIR optimization passes failed" << endl;
+        return -1;
+    }
+
     if (emitAction == DumpCiceroMLIR) {
         module.print(llvm::outs());
         return 0;
@@ -197,18 +205,18 @@ int main(int argc, char **argv) {
             bool isLastInstuction = op->getNextNode() == nullptr;
             if (CAST_MACRO(matchCharOp, op,
                            cicero_compiler::dialect::MatchCharOp)) {
-                outputDotFormat("MatchChar",
-                                string(1, matchCharOp.getTargetChar()),
-                                operationIndex, nullopt, !isLastInstuction);
+                outputDotFormat(string(1, matchCharOp.getTargetChar()),
+                                CICERO_COLOR_MATCH, operationIndex, nullopt,
+                                !isLastInstuction);
             } else if (CAST_MACRO(notMatchOp, op,
                                   cicero_compiler::dialect::NotMatchCharOp)) {
-                outputDotFormat("NotMatchChar",
-                                string(1, notMatchOp.getTargetChar()),
-                                operationIndex, nullopt, !isLastInstuction);
+                outputDotFormat("Not " + string(1, notMatchOp.getTargetChar()),
+                                CICERO_COLOR_MATCH, operationIndex, nullopt,
+                                !isLastInstuction);
             } else if (CAST_MACRO(matchAnyOp, op,
                                   cicero_compiler::dialect::MatchAnyOp)) {
-                outputDotFormat("MatchAny", nullopt, operationIndex, nullopt,
-                                !isLastInstuction);
+                outputDotFormat(".", CICERO_COLOR_MATCH, operationIndex,
+                                nullopt, !isLastInstuction);
             } else if (CAST_MACRO(flatSplitOp, op,
                                   cicero_compiler::dialect::FlatSplitOp)) {
                 uint16_t splitTargetIndex =
@@ -220,23 +228,23 @@ int main(int argc, char **argv) {
                         "did we get here???");
                 }
 
-                outputDotFormat("Split", nullopt, operationIndex,
+                outputDotFormat("Split", CICERO_COLOR_SPLIT, operationIndex,
                                 splitTargetIndex, true);
 
             } else if (CAST_MACRO(acceptOp, op,
                                   cicero_compiler::dialect::AcceptOp)) {
-                outputDotFormat("Accept", nullopt, operationIndex, nullopt,
-                                false);
+                outputDotFormat("Accept", CICERO_COLOR_ACCEPT, operationIndex,
+                                nullopt, false);
             } else if (CAST_MACRO(acceptPartialOp, op,
                                   cicero_compiler::dialect::AcceptPartialOp)) {
-                outputDotFormat("AcceptPartial", nullopt, operationIndex,
-                                nullopt, false);
+                outputDotFormat("AcceptPartial", CICERO_COLOR_ACCEPT,
+                                operationIndex, nullopt, false);
             } else if (CAST_MACRO(jumpOp, op,
                                   cicero_compiler::dialect::JumpOp)) {
                 uint16_t jumpTargetIndex =
                     symbolTable.lookup(jumpOp.getTarget());
 
-                outputDotFormat("Jump", nullopt, operationIndex,
+                outputDotFormat("Jump", CICERO_COLOR_JUMP, operationIndex,
                                 jumpTargetIndex, false);
             } else {
                 throw std::runtime_error(
@@ -344,15 +352,12 @@ void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
     outputStream << "0x" << hex << toWrite << endl;
 }
 
-void outputDotFormat(string instructionName,
-                     optional<string> instructionArgument,
+void outputDotFormat(string nodeLabel, string nodeColor,
                      unsigned int instructionIndex,
                      optional<unsigned int> targetIndex, bool linkToNext) {
-    cout << instructionIndex << " [label=\"" << instructionName;
-    if (instructionArgument.has_value()) {
-        cout << ": " << instructionArgument.value();
-    }
-    cout << "\"];\n";
+    cout << instructionIndex << " [label=\"" << nodeLabel
+         << "\" color=\"black\" style=\"filled\" fillcolor=\"" << nodeColor
+         << "\"]\n";
     if (linkToNext) {
         cout << instructionIndex << " -> " << instructionIndex + 1 << ";\n";
     }
@@ -360,3 +365,4 @@ void outputDotFormat(string instructionName,
         cout << instructionIndex << " -> " << targetIndex.value() << ";\n";
     }
 }
+// color="black" fillcolor="#dee0e6" style="filled"

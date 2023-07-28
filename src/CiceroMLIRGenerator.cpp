@@ -155,13 +155,12 @@ void CiceroMLIRGenerator::populateAtom(mlir::Block *block,
 
     if (auto matchCharOp = mlir::dyn_cast<MatchCharOp>(&atom)) {
         builder.create<cicero_compiler::dialect::MatchCharOp>(
-            builder.getUnknownLoc(), matchCharOp.getTargetCharAttr());
+            atom.getLoc(), matchCharOp.getTargetCharAttr());
         return;
     }
 
     if (auto matchAnyCharOp = mlir::dyn_cast<MatchAnyCharOp>(&atom)) {
-        builder.create<cicero_compiler::dialect::MatchAnyOp>(
-            builder.getUnknownLoc());
+        builder.create<cicero_compiler::dialect::MatchAnyOp>(atom.getLoc());
         return;
     }
 
@@ -176,8 +175,7 @@ void CiceroMLIRGenerator::populateAtom(mlir::Block *block,
     }
 
     if (auto dollarOp = mlir::dyn_cast<DollarOp>(&atom)) {
-        builder.create<cicero_compiler::dialect::AcceptOp>(
-            builder.getUnknownLoc());
+        builder.create<cicero_compiler::dialect::AcceptOp>(atom.getLoc());
         return;
     }
 
@@ -203,7 +201,7 @@ void CiceroMLIRGenerator::populateQuantifier(
         builder.setInsertionPointToEnd(block);
 
         auto splitOp = builder.create<cicero_compiler::dialect::SplitOp>(
-            builder.getUnknownLoc(), splitSymbol);
+            op.getLoc(), splitSymbol);
         splitOp.setName(splitSymbol);
 
         builder.setInsertionPointToStart(splitOp.getBody());
@@ -215,14 +213,14 @@ void CiceroMLIRGenerator::populateQuantifier(
         for (; max > min; max--) {
             builder.setInsertionPointToEnd(block);
             auto splitOp = builder.create<cicero_compiler::dialect::SplitOp>(
-                builder.getUnknownLoc(), endSymbol);
+                op.getLoc(), endSymbol);
 
             builder.setInsertionPointToStart(splitOp.getBody());
 
             populateAtom(block, atom);
         }
-        builder.create<cicero_compiler::dialect::PlaceholderOp>(
-            builder.getUnknownLoc(), endSymbol);
+        builder.create<cicero_compiler::dialect::PlaceholderOp>(op.getLoc(),
+                                                                endSymbol);
     }
 
     builder.setInsertionPointToEnd(block);

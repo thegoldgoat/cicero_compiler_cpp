@@ -20,3 +20,10 @@ enum CiceroAction {
     DumpCiceroDOT,
     DumpCompiled
 };
+
+#include <string>
+
+const std::string CICERO_COLOR_MATCH = "#ffa822";
+const std::string CICERO_COLOR_SPLIT = "#dee0e6";
+const std::string CICERO_COLOR_ACCEPT = "#1ac0c6";
+const std::string CICERO_COLOR_JUMP = "#2792ce";

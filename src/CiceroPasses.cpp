@@ -1,5 +1,6 @@
 #include "CiceroPasses.h"
 #include "CiceroDialectWrapper.h"
+#include "SplitFollowers.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/PatternMatch.h"
 #include <iostream>
@@ -138,6 +139,22 @@ removeOperationAndMoveSymbolToNext(mlir::Operation *op,
 
     rewriter.eraseOp(op);
     return mlir::success();
+}
+
+#include <iostream>
+
+mlir::LogicalResult
+SplitMerger::matchAndRewrite(FlatSplitOp op,
+                             mlir::PatternRewriter &rewriter) const {
+    auto splitFollowers = SplitFollowers();
+
+    splitFollowers.addFollowers(op);
+
+    llvm::outs() << "++ FOLLOWERS OF " << op.getLoc() << " ++\n";
+
+    splitFollowers.dump();
+
+    return mlir::failure();
 }
 
 } // namespace cicero_compiler::passes
