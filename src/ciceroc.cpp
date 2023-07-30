@@ -1,11 +1,11 @@
 #include "CiceroDialectWrapper.h"
+#include "cicero_helper.h"
 #include "cicero_macros.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/SymbolTable.h"
-#include "mlir/IR/Verifier.h"
 #include "mlir/Pass/PassManager.h"
 #include "llvm/ADT/ScopedHashTable.h"
 #include <fstream>
@@ -58,16 +58,15 @@ cl::opt<bool>
     optimizeJumps("Ojump",
                   cl::desc("Enable optimization for jumps instructions"));
 
+cl::opt<bool> optimizeSplitMerge(
+    "Osplitmerge",
+    cl::desc("Enable back-end optimization for merging splits followers"));
+
 cl::opt<bool>
     optimizeRegex("Oregex",
                   cl::desc("Enable middle-end optimization on regex syntax"));
 
 mlir::ModuleOp getRegexModule(mlir::MLIRContext &context);
-
-void outputToFileBinaryFormat(uint16_t opCode, uint16_t opData,
-                              ofstream &outputStream);
-void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
-                           ofstream &outputStream);
 
 /// @brief Output the corresponding instruction in the dot format
 /// @param nodeLabel The label the node should have, e.g. "Split"
@@ -79,7 +78,7 @@ void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
 /// @param linkToNext Specify if we need to link to the next instruction, true
 /// for everything except for accept/accept_partial/jump/last instruction of
 /// program
-void outputDotFormat(string nodeLabel, string nodeColor,
+void outputDotFormat(const string &nodeLabel, const string &nodeColor,
                      unsigned int instructionIndex,
                      optional<unsigned int> targetIndex, bool linkToNext);
 
@@ -163,16 +162,18 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    mlir::RewritePatternSet patterns2(&context);
-    patterns2.add<cicero_compiler::passes::SplitMerger>(&context);
-    frozenPatterns = mlir::FrozenRewritePatternSet(std::move(patterns2));
-    if (runMyGreedyPass<mlir::ModuleOp>(&context, module.getOperation(),
-                                        std::move(frozenPatterns),
-                                        mlir::GreedyRewriteConfig())
-            .failed()) {
-        module.print(llvm::outs());
-        cerr << "Cicero MLIR optimization passes failed" << endl;
-        return -1;
+    if (optimizeSplitMerge.getValue() || optimizeAll.getValue()) {
+        mlir::RewritePatternSet patterns2(&context);
+        patterns2.add<cicero_compiler::passes::SplitMerger>(&context);
+        frozenPatterns = mlir::FrozenRewritePatternSet(std::move(patterns2));
+        if (runMyGreedyPass<mlir::ModuleOp>(&context, module.getOperation(),
+                                            std::move(frozenPatterns),
+                                            mlir::GreedyRewriteConfig())
+                .failed()) {
+            module.print(llvm::outs());
+            cerr << "Cicero MLIR optimization passes failed" << endl;
+            return -1;
+        }
     }
 
     if (emitAction == DumpCiceroMLIR) {
@@ -180,123 +181,13 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    // Code generation
-    llvm::ScopedHashTable<mlir::StringRef, unsigned int> symbolTable;
-    llvm::ScopedHashTableScope<mlir::StringRef, unsigned int> scopedTable(
-        symbolTable);
-    unsigned int operationIndex = 0;
-    module.getBody()->walk(
-        [&symbolTable, &operationIndex](mlir::Operation *op) {
-            auto opSymbol = mlir::SymbolTable::getSymbolName(op);
-            if (opSymbol) {
-                symbolTable.insert(opSymbol, operationIndex);
-            }
-            operationIndex++;
-        });
-
-    operationIndex = 0;
     if (emitAction == DumpCiceroDOT) {
-
-        cout << "digraph {" << endl
-             << "begin [label=\"begin\"];" << endl
-             << "begin -> 0;" << endl;
-        module.getBody()->walk([&symbolTable,
-                                &operationIndex](mlir::Operation *op) {
-            bool isLastInstuction = op->getNextNode() == nullptr;
-            if (CAST_MACRO(matchCharOp, op,
-                           cicero_compiler::dialect::MatchCharOp)) {
-                outputDotFormat(string(1, matchCharOp.getTargetChar()),
-                                CICERO_COLOR_MATCH, operationIndex, nullopt,
-                                !isLastInstuction);
-            } else if (CAST_MACRO(notMatchOp, op,
-                                  cicero_compiler::dialect::NotMatchCharOp)) {
-                outputDotFormat("Not " + string(1, notMatchOp.getTargetChar()),
-                                CICERO_COLOR_MATCH, operationIndex, nullopt,
-                                !isLastInstuction);
-            } else if (CAST_MACRO(matchAnyOp, op,
-                                  cicero_compiler::dialect::MatchAnyOp)) {
-                outputDotFormat(".", CICERO_COLOR_MATCH, operationIndex,
-                                nullopt, !isLastInstuction);
-            } else if (CAST_MACRO(flatSplitOp, op,
-                                  cicero_compiler::dialect::FlatSplitOp)) {
-                uint16_t splitTargetIndex =
-                    symbolTable.lookup(flatSplitOp.getSplitTarget());
-
-                if (isLastInstuction) {
-                    throw std::runtime_error(
-                        "Last instruction of program cannot be a split, how "
-                        "did we get here???");
-                }
-
-                outputDotFormat("Split", CICERO_COLOR_SPLIT, operationIndex,
-                                splitTargetIndex, true);
-
-            } else if (CAST_MACRO(acceptOp, op,
-                                  cicero_compiler::dialect::AcceptOp)) {
-                outputDotFormat("Accept", CICERO_COLOR_ACCEPT, operationIndex,
-                                nullopt, false);
-            } else if (CAST_MACRO(acceptPartialOp, op,
-                                  cicero_compiler::dialect::AcceptPartialOp)) {
-                outputDotFormat("AcceptPartial", CICERO_COLOR_ACCEPT,
-                                operationIndex, nullopt, false);
-            } else if (CAST_MACRO(jumpOp, op,
-                                  cicero_compiler::dialect::JumpOp)) {
-                uint16_t jumpTargetIndex =
-                    symbolTable.lookup(jumpOp.getTarget());
-
-                outputDotFormat("Jump", CICERO_COLOR_JUMP, operationIndex,
-                                jumpTargetIndex, false);
-            } else {
-                throw std::runtime_error(
-                    "Graphviz output for operation not implemented: " +
-                    op->getName().getStringRef().str());
-            }
-            operationIndex++;
-        });
-
-        cout << "}" << endl;
+        cicero_compiler::dumpCiceroDot(module);
         return 0;
     }
 
-    auto writeFunction = binaryOutputFormat == Hex ? outputToFileHexFormat
-                                                   : outputToFileBinaryFormat;
-    module.getBody()->walk([&writeFunction, &outputFile, &symbolTable,
-                            &operationIndex](mlir::Operation *op) {
-        // Try to cast to concrete operations
-        if (CAST_MACRO(matchCharOp, op,
-                       cicero_compiler::dialect::MatchCharOp)) {
-            writeFunction(CiceroOpCodes::MATCH_CHAR,
-                          matchCharOp.getTargetChar(), outputFile);
-        } else if (CAST_MACRO(notMatchOp, op,
-                              cicero_compiler::dialect::NotMatchCharOp)) {
-            writeFunction(CiceroOpCodes::NOT_MATCH_CHAR,
-                          notMatchOp.getTargetChar(), outputFile);
-        } else if (CAST_MACRO(matchAnyOp, op,
-                              cicero_compiler::dialect::MatchAnyOp)) {
-            writeFunction(CiceroOpCodes::MATCH_ANY, 0, outputFile);
-        } else if (CAST_MACRO(flatSplitOp, op,
-                              cicero_compiler::dialect::FlatSplitOp)) {
-            uint16_t splitTargetIndex =
-                symbolTable.lookup(flatSplitOp.getSplitTarget());
-
-            writeFunction(CiceroOpCodes::SPLIT, splitTargetIndex, outputFile);
-        } else if (CAST_MACRO(acceptOp, op,
-                              cicero_compiler::dialect::AcceptOp)) {
-            writeFunction(CiceroOpCodes::ACCEPT, 0, outputFile);
-        } else if (CAST_MACRO(acceptPartialOp, op,
-                              cicero_compiler::dialect::AcceptPartialOp)) {
-            writeFunction(CiceroOpCodes::ACCEPT_PARTIAL, 0, outputFile);
-        } else if (CAST_MACRO(jumpOp, op, cicero_compiler::dialect::JumpOp)) {
-            uint16_t jumpTargetIndex = symbolTable.lookup(jumpOp.getTarget());
-            writeFunction(CiceroOpCodes::JUMP, jumpTargetIndex, outputFile);
-        } else {
-            throw std::runtime_error(
-                "Code generation for operation not implemented: " +
-                op->getName().getStringRef().str());
-        }
-
-        operationIndex++;
-    });
+    // Code generation
+    cicero_compiler::dumpCompiled(module, outputFile, binaryOutputFormat);
 
     return 0;
 }
@@ -307,7 +198,7 @@ mlir::ModuleOp getRegexModule(mlir::MLIRContext &context) {
         string regex;
 
         if (inputRegex.getNumOccurrences() > 0) {
-            regex = inputRegex;
+            regex = inputRegex.getValue();
             return RegexParser::parseRegexFromString(context, regex);
         }
         cout << "Enter regex: ";
@@ -337,32 +228,3 @@ mlir::ModuleOp getRegexModule(mlir::MLIRContext &context) {
 
     return RegexParser::parseRegexFromFile(context, inputFilename);
 }
-
-#define CODEGEN_SEPARATION(opCode, opData)                                     \
-    ((opCode & 0x7) << 13) | (opData & 0x1fff)
-
-void outputToFileBinaryFormat(uint16_t opCode, uint16_t opData,
-                              ofstream &outputStream) {
-    uint16_t toWrite = CODEGEN_SEPARATION(opCode, opData);
-    outputStream.write(reinterpret_cast<char *>(&toWrite), sizeof(toWrite));
-}
-void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
-                           ofstream &outputStream) {
-    uint16_t toWrite = CODEGEN_SEPARATION(opCode, opData);
-    outputStream << "0x" << hex << toWrite << endl;
-}
-
-void outputDotFormat(string nodeLabel, string nodeColor,
-                     unsigned int instructionIndex,
-                     optional<unsigned int> targetIndex, bool linkToNext) {
-    cout << instructionIndex << " [label=\"" << nodeLabel
-         << "\" color=\"black\" style=\"filled\" fillcolor=\"" << nodeColor
-         << "\"]\n";
-    if (linkToNext) {
-        cout << instructionIndex << " -> " << instructionIndex + 1 << ";\n";
-    }
-    if (targetIndex.has_value()) {
-        cout << instructionIndex << " -> " << targetIndex.value() << ";\n";
-    }
-}
-// color="black" fillcolor="#dee0e6" style="filled"

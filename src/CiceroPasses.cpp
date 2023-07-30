@@ -104,6 +104,12 @@ removeOperationAndMoveSymbolToNext(mlir::Operation *op,
                                    mlir::PatternRewriter &rewriter) {
     auto opSymbol = mlir::SymbolTable::getSymbolName(op);
 
+    // If it does not have a symbol, just remove it
+    if (!opSymbol) {
+        rewriter.eraseOp(op);
+        return mlir::success();
+    }
+
     auto nextOp = op->getNextNode();
 
     if (!nextOp) {
@@ -148,11 +154,7 @@ SplitMerger::matchAndRewrite(FlatSplitOp op,
                              mlir::PatternRewriter &rewriter) const {
     auto splitFollowers = SplitFollowers();
 
-    splitFollowers.addFollowers(op);
-
-    llvm::outs() << "++ FOLLOWERS OF " << op.getLoc() << " ++\n";
-
-    splitFollowers.dump();
+    splitFollowers.optimizeByFactorize(op, rewriter);
 
     return mlir::failure();
 }
