@@ -119,6 +119,11 @@ int main(int argc, char **argv) {
 
     auto regexModule = getRegexModule(context);
 
+    if (!regexModule) {
+        cerr << "Regex parsing failed" << endl;
+        return -1;
+    }
+
     if (optimizeRegex.getValue() || optimizeAll.getValue()) {
         if (RegexParser::optimizeRegex(context, regexModule).failed()) {
             regexModule.print(llvm::outs());

@@ -22,6 +22,8 @@ mlir::ModuleOp parseRegexImpl(mlir::MLIRContext &context,
 
     regexParser parser(&tokens);
 
+    parser.setErrorHandler(std::make_shared<antlr4::BailErrorStrategy>());
+
     auto regExpRoot = parser.root();
 
     return MLIRVisitor(context, filename).visitRoot(regExpRoot);

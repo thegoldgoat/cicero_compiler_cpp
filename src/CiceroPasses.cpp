@@ -154,9 +154,7 @@ SplitMerger::matchAndRewrite(FlatSplitOp op,
                              mlir::PatternRewriter &rewriter) const {
     auto splitFollowers = SplitFollowers();
 
-    splitFollowers.optimizeByFactorize(op, rewriter);
-
-    return mlir::failure();
+    return splitFollowers.optimizeByFactorize(op, rewriter);
 }
 
 } // namespace cicero_compiler::passes
