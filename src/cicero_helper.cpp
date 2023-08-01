@@ -15,12 +15,43 @@ void outputToFileBinaryFormat(uint16_t opCode, uint16_t opData,
     uint16_t toWrite = CODEGEN_SEPARATION(opCode, opData);
     outputStream.write(reinterpret_cast<char *>(&toWrite), sizeof(toWrite));
 }
+
 void outputToFileHexFormat(uint16_t opCode, uint16_t opData,
                            ofstream &outputStream) {
     uint16_t toWrite = CODEGEN_SEPARATION(opCode, opData);
     outputStream << "0x" << hex << toWrite << endl;
 }
 
+/// @brief Populate a symbol table for the module
+/// @param module The module containing the operations with symbols
+/// @return An unordered map with the symbol as key, and as value the index of
+/// the instruction labeled with that symbol
+std::unordered_map<std::string, unsigned int>
+createSymbolTable(mlir::ModuleOp &module) {
+    std::unordered_map<std::string, unsigned int> symbolTable;
+    unsigned int operationIndex = 0;
+    module.getBody()->walk(
+        [&symbolTable, &operationIndex](mlir::Operation *op) {
+            auto opSymbol = mlir::SymbolTable::getSymbolName(op);
+            if (opSymbol) {
+                symbolTable[opSymbol.getValue().str()] = operationIndex;
+            }
+            operationIndex++;
+        });
+
+    return std::move(symbolTable);
+}
+
+/// @brief Output the corresponding instruction in the dot format
+/// @param nodeLabel The label the node should have, e.g. "Split"
+/// @param nodeColor The color the node should have
+/// @param instructionIndex The address of the instruction in the program
+/// instruction memory
+/// @param targetIndex For jump, the jump target address. For split, the split
+/// target address
+/// @param linkToNext Specify if we need to link to the next instruction, true
+/// for everything except for accept/accept_partial/jump/last instruction of
+/// program
 void outputDotFormat(const string &nodeLabel, const string &nodeColor,
                      unsigned int instructionIndex,
                      optional<unsigned int> targetIndex, bool linkToNext) {
@@ -101,7 +132,7 @@ void dumpCiceroDot(mlir::ModuleOp &module) {
 
 void dumpCompiled(mlir::ModuleOp &module, std::ofstream &outputFile,
                   CiceroBinaryOutputFormat format) {
-    auto symbolTable = cicero_compiler::createSymbolTable(module);
+    auto symbolTable = createSymbolTable(module);
 
     unsigned int operationIndex = 0;
     auto writeFunction =
@@ -144,22 +175,6 @@ void dumpCompiled(mlir::ModuleOp &module, std::ofstream &outputFile,
 
         operationIndex++;
     });
-}
-
-std::unordered_map<std::string, unsigned int>
-createSymbolTable(mlir::ModuleOp &module) {
-    std::unordered_map<std::string, unsigned int> symbolTable;
-    unsigned int operationIndex = 0;
-    module.getBody()->walk(
-        [&symbolTable, &operationIndex](mlir::Operation *op) {
-            auto opSymbol = mlir::SymbolTable::getSymbolName(op);
-            if (opSymbol) {
-                symbolTable[opSymbol.getValue().str()] = operationIndex;
-            }
-            operationIndex++;
-        });
-
-    return std::move(symbolTable);
 }
 
 } // namespace cicero_compiler

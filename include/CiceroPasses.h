@@ -59,29 +59,4 @@ mlir::LogicalResult
 removeOperationAndMoveSymbolToNext(mlir::Operation *op,
                                    mlir::PatternRewriter &rewriter);
 
-/// @brief Merge same-operations that comes after split
-/// @details This pass reads all the follower operations of a flatten-split,
-/// and merges the ones that are the same. For example, if we have the following
-/// operations:
-/// ```
-/// split {
-///     match a
-/// }
-/// match a
-/// ```
-/// Then the pass will merge the two match operations into one:
-/// ```
-/// match a
-/// ```
-struct SplitMerger : public mlir::OpRewritePattern<FlatSplitOp> {
-    SplitMerger(mlir::MLIRContext *context)
-        : OpRewritePattern(context, /*benefit=*/100) {}
-
-    mlir::LogicalResult
-    matchAndRewrite(FlatSplitOp op,
-                    mlir::PatternRewriter &rewriter) const override;
-};
-
-std::vector<mlir::Operation *> getSplitFollowers(FlatSplitOp &op);
-
 } // namespace cicero_compiler::passes

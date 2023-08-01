@@ -5,7 +5,6 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/PatternMatch.h"
-#include "mlir/IR/SymbolTable.h"
 #include "mlir/Pass/PassManager.h"
 #include "llvm/ADT/ScopedHashTable.h"
 #include <fstream>
@@ -21,6 +20,8 @@
 
 using namespace std;
 namespace cl = llvm::cl;
+
+/// * CLI options for input/output
 
 static cl::opt<std::string> inputRegex(cl::Optional, "regex",
                                        cl::desc("<input regex>"),
@@ -52,37 +53,27 @@ static cl::opt<enum CiceroBinaryOutputFormat> binaryOutputFormat(
     cl::values(clEnumValN(
         Hex, "hex", "output in hex format (one 16 bits hex value per line))")));
 
+/// * CLI options to enable/disable optimizations
+
 cl::opt<bool> optimizeAll("Oall", cl::desc("Enable all optimizations"));
 
 cl::opt<bool>
     optimizeJumps("Ojump",
                   cl::desc("Enable optimization for jumps instructions"));
 
-cl::opt<bool> optimizeSplitMerge(
-    "Osplitmerge",
-    cl::desc("Enable back-end optimization for merging splits followers"));
-
 cl::opt<bool>
     optimizeRegex("Oregex",
                   cl::desc("Enable middle-end optimization on regex syntax"));
 
 #define IS_JUMP_OPT_ENABLED (optimizeJumps.getValue() || optimizeAll.getValue())
+#define IS_REGEX_OPT_ENABLED                                                   \
+    (optimizeRegex.getValue() || optimizeAll.getValue())
 
+/// @brief Get the module containing Regex dialect operations
+/// @param context MLIRContext to use
+/// @return A new module containing the Regex dialect operations, populated
+/// using the input specified via CLI arguments
 mlir::ModuleOp getRegexModule(mlir::MLIRContext &context);
-
-/// @brief Output the corresponding instruction in the dot format
-/// @param nodeLabel The label the node should have, e.g. "Split"
-/// @param nodeColor The color the node should have
-/// @param instructionIndex The address of the instruction in the program
-/// instruction memory
-/// @param targetIndex For jump, the jump target address. For split, the split
-/// target address
-/// @param linkToNext Specify if we need to link to the next instruction, true
-/// for everything except for accept/accept_partial/jump/last instruction of
-/// program
-void outputDotFormat(const string &nodeLabel, const string &nodeColor,
-                     unsigned int instructionIndex,
-                     optional<unsigned int> targetIndex, bool linkToNext);
 
 int main(int argc, char **argv) {
     mlir::registerPassManagerCLOptions();
@@ -126,7 +117,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    if (optimizeRegex.getValue() || optimizeAll.getValue()) {
+    if (IS_REGEX_OPT_ENABLED) {
         if (RegexParser::optimizeRegex(context, regexModule).failed()) {
             regexModule.print(llvm::outs());
             cerr << "Regex optimization failed" << endl;
@@ -167,23 +158,6 @@ int main(int argc, char **argv) {
         module.print(llvm::outs());
         cerr << "Cicero MLIR optimization passes failed" << endl;
         return -1;
-    }
-
-    if (optimizeSplitMerge.getValue() || optimizeAll.getValue()) {
-        mlir::RewritePatternSet patterns2(&context);
-        patterns2.add<cicero_compiler::passes::SplitMerger>(&context);
-        if (IS_JUMP_OPT_ENABLED) {
-            patterns2.add<cicero_compiler::passes::SimplifyJump>(&context);
-        }
-        frozenPatterns = mlir::FrozenRewritePatternSet(std::move(patterns2));
-        if (runMyGreedyPass<mlir::ModuleOp>(&context, module.getOperation(),
-                                            std::move(frozenPatterns),
-                                            mlir::GreedyRewriteConfig())
-                .failed()) {
-            module.print(llvm::outs());
-            cerr << "Cicero MLIR optimization passes failed" << endl;
-            return -1;
-        }
     }
 
     if (emitAction == DumpCiceroMLIR) {
