@@ -58,15 +58,18 @@ class SplitFollowers {
             mlir::Operation *opWithMultipleParent,
             std::vector<mlir::SymbolTable::SymbolUse> &&usersOf)
             : opWithMultipleParent(opWithMultipleParent),
-              usersOf(std::move(usersOf)) {}
+              usersOf(std::move(usersOf)) {
+            message = (opWithMultipleParent->getName().getStringRef().str() +
+                       " has " + std::to_string(usersOf.size()) + " parents");
+        }
 
         virtual const char *what() const noexcept override {
-            return (opWithMultipleParent->getName().getStringRef().str() +
-                    " has " + std::to_string(usersOf.size()) + " parents")
-                .c_str();
+            return message.c_str();
         }
 
       private:
+        std::string message;
+
         mlir::Operation *opWithMultipleParent;
         std::vector<mlir::SymbolTable::SymbolUse> usersOf;
     };
@@ -82,7 +85,7 @@ class SplitFollowers {
             ancestorSplitOp.getOperation()->getParentOp());
 
         ancestorSplitOp.getOperation()->getParentOp()->dump();
-        llvm::outs() << "applyOptimizations on " << ancestorSplitOp;
+        llvm::outs() << "applyOptimizations on " << ancestorSplitOp << '\n';
 
         // Step 1: For each op, find the parent split
         std::vector<dialect::FlatSplitOp> parentSplits;
@@ -98,6 +101,8 @@ class SplitFollowers {
                 isImmediatePredecessors.emplace_back(isImmediatePredecessor);
             }
         } catch (FindSplitParentException &fp) {
+            llvm::outs() << "applyOptimizations on " << ancestorSplitOp
+                         << " was stopped. Reason: " << fp.what() << "\n";
             return mlir::failure();
         }
 

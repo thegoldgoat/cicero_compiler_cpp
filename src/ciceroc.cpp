@@ -66,6 +66,8 @@ cl::opt<bool>
     optimizeRegex("Oregex",
                   cl::desc("Enable middle-end optimization on regex syntax"));
 
+#define IS_JUMP_OPT_ENABLED (optimizeJumps.getValue() || optimizeAll.getValue())
+
 mlir::ModuleOp getRegexModule(mlir::MLIRContext &context);
 
 /// @brief Output the corresponding instruction in the dot format
@@ -152,7 +154,7 @@ int main(int argc, char **argv) {
     patterns.add<cicero_compiler::passes::FlattenSplit>(&context);
     patterns.add<cicero_compiler::passes::PlaceholderRemover>(&context);
 
-    if (optimizeJumps.getValue() || optimizeAll.getValue()) {
+    if (IS_JUMP_OPT_ENABLED) {
         patterns.add<cicero_compiler::passes::SimplifyJump>(&context);
     }
 
@@ -170,6 +172,9 @@ int main(int argc, char **argv) {
     if (optimizeSplitMerge.getValue() || optimizeAll.getValue()) {
         mlir::RewritePatternSet patterns2(&context);
         patterns2.add<cicero_compiler::passes::SplitMerger>(&context);
+        if (IS_JUMP_OPT_ENABLED) {
+            patterns2.add<cicero_compiler::passes::SimplifyJump>(&context);
+        }
         frozenPatterns = mlir::FrozenRewritePatternSet(std::move(patterns2));
         if (runMyGreedyPass<mlir::ModuleOp>(&context, module.getOperation(),
                                             std::move(frozenPatterns),
