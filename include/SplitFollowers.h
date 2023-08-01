@@ -30,23 +30,30 @@ class SplitFollowers {
             if (matchChar.size() < 2) {
                 continue;
             }
+#ifdef NDEBUG
             llvm::outs() << "Begin optimization for character = "
                          << matchChar[0].getTargetChar() << "\n";
             cicero_compiler::dumpCiceroDot(moduleOp);
+#endif
 
             if (applyOptimization<dialect::MatchCharOp>(op, rewriter, matchChar)
                     .failed()) {
                 return mlir::failure();
             }
+#ifdef NDEBUG
             llvm::outs() << "End of optimization: \n";
             cicero_compiler::dumpCiceroDot(moduleOp);
+#endif
             return mlir::success();
         }
 
         if (matchAnys.size() < 2) {
             return mlir::failure();
         }
+
+#ifdef NDEBUG
         llvm::outs() << "Optimizing followers MatchAnyOps\n";
+#endif
         // applyOptimization<dialect::MatchAnyOp>(op, rewriter, matchAnys);
         return mlir::failure();
     }
@@ -84,9 +91,10 @@ class SplitFollowers {
         auto moduleOp = mlir::dyn_cast<mlir::ModuleOp>(
             ancestorSplitOp.getOperation()->getParentOp());
 
+#ifdef NDEBUG
         ancestorSplitOp.getOperation()->getParentOp()->dump();
         llvm::outs() << "applyOptimizations on " << ancestorSplitOp << '\n';
-
+#endif
         // Step 1: For each op, find the parent split
         std::vector<dialect::FlatSplitOp> parentSplits;
         std::vector<bool> isImmediatePredecessors;
@@ -101,8 +109,10 @@ class SplitFollowers {
                 isImmediatePredecessors.emplace_back(isImmediatePredecessor);
             }
         } catch (FindSplitParentException &fp) {
+#ifdef NDEBUG
             llvm::outs() << "applyOptimizations on " << ancestorSplitOp
                          << " was stopped. Reason: " << fp.what() << "\n";
+#endif
             return mlir::failure();
         }
 
@@ -127,8 +137,10 @@ class SplitFollowers {
             rewriter.clone(*ops[0].getOperation());
         opAfterAncestor->removeAttr(mlir::SymbolTable::getSymbolAttrName());
 
+#ifdef NDEBUG
         llvm::outs() << "\n*** Step 2 finished, below the dump:\n";
         cicero_compiler::dumpCiceroDot(moduleOp);
+#endif
 
         // Step 2.5, "Disconnect" the flatsplit parents of opToRemoves:
         for (size_t i = 0; i < ops.size(); i++) {
@@ -162,8 +174,10 @@ class SplitFollowers {
             }
         }
 
+#ifdef NDEBUG
         llvm::outs() << "\n*** Step 2.5 finished, below the dump:\n";
         cicero_compiler::dumpCiceroDot(moduleOp);
+#endif
 
         // Step 3: Remove all the ops except the first one (preserve control
         // flow). Also, "backup" the symbols of the followers of the deleted ops
@@ -184,8 +198,11 @@ class SplitFollowers {
             }
         }
 
+
+#ifdef NDEBUG
         llvm::outs() << "*** Step 3 finished, below the dump:\n";
         cicero_compiler::dumpCiceroDot(moduleOp);
+#endif
 
         // Step 4: Populate the flow of execution after the factorized op
         rewriter.setInsertionPointAfter(opAfterAncestor);
