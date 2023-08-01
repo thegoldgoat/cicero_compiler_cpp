@@ -38,7 +38,8 @@ add_executable(
   src/ciceroc.cpp
   src/mlir-dialect/CiceroDialectWrapper.cpp
   src/CiceroMLIRGenerator.cpp
-  src/Passes.cpp
+  src/CiceroPasses.cpp
+  src/cicero_helper.cpp
 )
 
 add_dependencies(

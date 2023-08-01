@@ -1,4 +1,4 @@
-#include "Passes.h"
+#include "CiceroPasses.h"
 #include "CiceroDialectWrapper.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/PatternMatch.h"
@@ -102,6 +102,12 @@ mlir::LogicalResult
 removeOperationAndMoveSymbolToNext(mlir::Operation *op,
                                    mlir::PatternRewriter &rewriter) {
     auto opSymbol = mlir::SymbolTable::getSymbolName(op);
+
+    // If it does not have a symbol, just remove it
+    if (!opSymbol) {
+        rewriter.eraseOp(op);
+        return mlir::success();
+    }
 
     auto nextOp = op->getNextNode();
 
