@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
     }
 
     if (IS_REGEX_OPT_ENABLED) {
-        if (RegexParser::optimizeRegex(context, regexModule).failed()) {
+        if (RegexParser::optimizeRegex(regexModule).failed()) {
             regexModule.print(llvm::outs());
             cerr << "Regex optimization failed" << endl;
             return -1;
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
 
     mlir::FrozenRewritePatternSet frozenPatterns(std::move(patterns));
 
-    if (runMyGreedyPass<mlir::ModuleOp>(&context, module.getOperation(),
+    if (runMyGreedyPass<mlir::ModuleOp>(module.getOperation(),
                                         std::move(frozenPatterns),
                                         mlir::GreedyRewriteConfig())
             .failed()) {

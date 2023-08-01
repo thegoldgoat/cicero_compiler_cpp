@@ -27,7 +27,7 @@ struct SimplifyJump : public mlir::OpRewritePattern<JumpOp> {
 
 /// @brief Flatten the split operations
 /// @details This pass updates the split operation by removing the content of
-/// the split body, appending it to the end of the block, and replacing the
+/// the split body, appending it after the split, and replacing the
 /// split operation with a flat_split operation.
 struct FlattenSplit : public mlir::OpRewritePattern<SplitOp> {
 
@@ -38,7 +38,8 @@ struct FlattenSplit : public mlir::OpRewritePattern<SplitOp> {
     matchAndRewrite(SplitOp op, mlir::PatternRewriter &rewriter) const override;
 };
 
-/// @brief Removes all placeholder operations
+/// @brief Removes all placeholder operations, by moving their symbols to the
+/// next operation, see `removeOperationAndMoveSymbolToNext` for more details
 struct PlaceholderRemover : public mlir::OpRewritePattern<PlaceholderOp> {
     PlaceholderRemover(mlir::MLIRContext *context)
         : OpRewritePattern(context, /*benefit=*/100) {}
@@ -52,7 +53,7 @@ struct PlaceholderRemover : public mlir::OpRewritePattern<PlaceholderOp> {
 /// @details This pass updates the operation by removing it, if it has a symbol
 /// then it moves the symbol to the next operation. If the next operation
 /// already has a symbol, then updated all the users of `op`'s symbol to use the
-/// one of next operation.
+/// symbol of the next operation.
 /// @param op operation to remove
 /// @param rewriter pattern rewriter class to use
 mlir::LogicalResult

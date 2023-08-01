@@ -6,17 +6,23 @@
 #include "mlir/IR/BuiltinOps.h"
 
 namespace cicero_compiler {
+
+/// @brief Helper class to generate a MLIR cicero module from a MLIR regex
+/// module
 class CiceroMLIRGenerator {
   public:
     CiceroMLIRGenerator(mlir::MLIRContext &context) : builder(&context){};
 
+    /// @brief Generate a MLIR cicero module from a MLIR regex module
+    /// @param regexModule input MLIR regex module
+    /// @return generated MLIR cicero module
     mlir::ModuleOp mlirGen(mlir::ModuleOp &regexModule);
 
   private:
     mlir::ModuleOp mlirGen(RegexParser::dialect::RootOp &regexRoot);
 
     void populateConcatenationFather(mlir::Block *block,
-                                   mlir::Operation *alternationFather);
+                                     mlir::Operation *alternationFather);
 
     void populateConcatenation(mlir::Block *block,
                                RegexParser::dialect::ConcatenationOp &op);
@@ -25,7 +31,9 @@ class CiceroMLIRGenerator {
 
     void populateAtom(mlir::Block *block, mlir::Operation &atom);
 
-    void populateQuantifier(mlir::Block *block, RegexParser::dialect::QuantifierOp &op, mlir::Operation &atom);
+    void populateQuantifier(mlir::Block *block,
+                            RegexParser::dialect::QuantifierOp &op,
+                            mlir::Operation &atom);
 
     void populateGroup(mlir::Block *block, RegexParser::dialect::GroupOp &op);
 

@@ -57,16 +57,16 @@ mlir::ModuleOp parseRegexFromString(mlir::MLIRContext &context,
     return parseRegexImpl(context, antlr4::ANTLRInputStream(regex), filename);
 }
 
-mlir::LogicalResult optimizeRegex(mlir::MLIRContext &context,
-                                  mlir::ModuleOp &module) {
-    mlir::RewritePatternSet patterns(&context);
+mlir::LogicalResult optimizeRegex(mlir::ModuleOp &module) {
+    mlir::MLIRContext *context = module.getContext();
+    mlir::RewritePatternSet patterns(context);
     patterns.add<passes::FactorizeRoot, passes::FactorizeSubregex,
                  passes::SimplifySubregexNotQuantified,
                  passes::SimplifySubregexSinglePiece,
-                 passes::SimplifyLeadingQuantifiers>(&context);
+                 passes::SimplifyLeadingQuantifiers>(context);
 
     return runMyGreedyPass<mlir::ModuleOp>(
-        &context, module.getOperation(),
+        module.getOperation(),
         mlir::FrozenRewritePatternSet(std::move(patterns)),
         mlir::GreedyRewriteConfig());
 }
