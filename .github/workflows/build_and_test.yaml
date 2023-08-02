@@ -10,4 +10,4 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
       - name: Run build and test script within docker container
-        run: docker run -v $PWD:/app /bin/bash /app/Docker/build_and_test.sh thegoldgoat/cicero_build_environment
+        run: docker run -v $PWD:/app thegoldgoat/cicero_build_environment:latest /bin/bash /app/Docker/build_and_test.sh
