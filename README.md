@@ -33,10 +33,22 @@ cmake ..
 cmake --build .
 ```
 
+### Build with Docker
+
+If you prefer, you can use a Docker image to build. You can find in `Docker/Dockerfile` the dockerfile to build the image:
+
+```bash
+# Build docker image which contains build dependencies
+docker build -t cicero_build_environment:latest Docker
+
+# Run build and test within docker image
+docker run -v $PWD:/app cicero_build_environment:latest /bin/bash /app/Docker/build_and_test.sh
+```
+
 ## Dialect Design
 
 Here is an example before and after the canonicalization of the `cicero.split` operation, which
-gets replaced by a `cicero.flat_split` operation. The `cicero.flat_split` operation has a reference 
+gets replaced by a `cicero.flat_split` operation. The `cicero.flat_split` operation has a reference
 to the actual body of the split, which originally was the body of the `cicero.split` operation.
 
 ```mlir
