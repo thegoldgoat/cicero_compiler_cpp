@@ -1,0 +1,16 @@
+name: Build And Test
+
+on: [push]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+      - name: Run build and test script within docker container
+        run: docker run -v $PWD:/app thegoldgoat/cicero_build_environment:latest /bin/bash /app/Docker/build_and_test.sh
