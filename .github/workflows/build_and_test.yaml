@@ -1,0 +1,15 @@
+name: Build And Test
+
+on: [push]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Build docker image
+        run: docker build -t cicero_build_environment ./Docker
+      - name: Run build and test within docker container
+        run: docker run -v $PWD:/app /bin/bash /app/Docker/build_and_test.sh thegoldgoat/cicero_build_environment
