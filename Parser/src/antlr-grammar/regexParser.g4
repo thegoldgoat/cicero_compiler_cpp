@@ -44,7 +44,19 @@ metachar:
 	| DIGIT
 	| DIGIT_COMPLEMENTED;
 
+group_terminal_sequence:
+	GROUP_CHAR
+	| GROUP_DIGIT_CHAR;
+
+group_metachar:
+	GROUP_WHITESPACE
+	| GROUP_WHITESPACE_COMPLEMENTED
+	| GROUP_WORD
+	| GROUP_WORD_COMPLEMENTED
+	| GROUP_DIGIT
+	| GROUP_DIGIT_COMPLEMENTED;
+
 group:
-	first_char=terminal_sequence MINUS second_char=terminal_sequence
-	| single_char=terminal_sequence
-	| metachar;
+	first_char=group_terminal_sequence MINUS second_char=group_terminal_sequence
+	| single_char=group_terminal_sequence
+	| group_metachar;

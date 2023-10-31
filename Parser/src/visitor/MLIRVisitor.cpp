@@ -43,7 +43,8 @@ void MLIRVisitor::visitConcatenation(regexParser::ConcatenationContext *ctx) {
 
     if (ctx->DOLLAR() != nullptr) {
         builder.setInsertionPointToEnd(concatenationOp.getBody());
-        auto dollarPiece = builder.create<dialect::PieceOp>(LOCATION_MACRO(ctx->DOLLAR()));
+        auto dollarPiece =
+            builder.create<dialect::PieceOp>(LOCATION_MACRO(ctx->DOLLAR()));
         builder.setInsertionPointToStart(dollarPiece.getBody());
         builder.create<dialect::DollarOp>(LOCATION_MACRO(ctx->DOLLAR()));
     }
@@ -93,8 +94,8 @@ void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
         bool charSet[256];
         memset(charSet, false, sizeof(charSet));
         for (auto &groupCtx : ctx->group()) {
-            if (groupCtx->metachar()) {
-                auto mergeChar = visitMetachar(groupCtx->metachar());
+            if (groupCtx->group_metachar()) {
+                auto mergeChar = visitGroupMetachar(groupCtx->group_metachar());
 
                 for (std::size_t i = 0; i < sizeof(charSet); i++) {
                     charSet[i] = charSet[i] || mergeChar[i];
@@ -169,9 +170,7 @@ void MLIRVisitor::visitQuantifier(regexParser::QuantifierContext *ctx) {
 #define BUILD_BOOL_REF_ARRAY_MACRO(array)                                      \
     builder.getDenseBoolArrayAttr(llvm::ArrayRef<bool>(array, sizeof(array)))
 
-mlir::DenseBoolArrayAttr
-MLIRVisitor::visitMetachar(regexParser::MetacharContext *ctx) {
-    char metachar = ctx->getText()[1];
+mlir::DenseBoolArrayAttr MLIRVisitor::getMetacharArray(char metachar) {
     switch (metachar) {
     case 'd':
         return BUILD_BOOL_REF_ARRAY_MACRO(DIGIT_SET);
@@ -186,6 +185,25 @@ MLIRVisitor::visitMetachar(regexParser::MetacharContext *ctx) {
     case 'S':
         return BUILD_BOOL_REF_ARRAY_MACRO(WHITESPACE_SET_COMPLEMENTED);
     default:
+        throw std::exception();
+    }
+}
+
+mlir::DenseBoolArrayAttr
+MLIRVisitor::visitMetachar(regexParser::MetacharContext *ctx) {
+    try {
+        return getMetacharArray(ctx->getText()[1]);
+    } catch (std::exception e) {
+        throw std::runtime_error("Invalid metachar: " + ctx->getText() +
+                                 " at " + ctx->getSourceInterval().toString());
+    }
+}
+
+mlir::DenseBoolArrayAttr
+MLIRVisitor::visitGroupMetachar(regexParser::Group_metacharContext *ctx) {
+    try {
+        return getMetacharArray(ctx->getText()[1]);
+    } catch (std::exception e) {
         throw std::runtime_error("Invalid metachar: " + ctx->getText() +
                                  " at " + ctx->getSourceInterval().toString());
     }

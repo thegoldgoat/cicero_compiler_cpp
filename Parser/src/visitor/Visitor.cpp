@@ -75,8 +75,9 @@ unique_ptr<AST::Atom> RegexVisitor::visitAtom(regexParser::AtomContext *ctx) {
     if (ctx->LBRACKET()) {
         vector<bool> charSet(256, false);
         for (auto &groupCtx : ctx->group()) {
-            if (groupCtx->metachar()) {
-                auto mergeChar = visitMetachar(groupCtx->metachar());
+            if (groupCtx->group_metachar()) {
+                auto mergeChar =
+                    visitGroupMetachar(groupCtx->group_metachar());
 
                 for (vector<bool>::size_type i = 0; i < charSet.size(); i++) {
                     charSet[i] = charSet[i] || mergeChar[i];
@@ -139,9 +140,8 @@ RegexVisitor::visitQuantifier(regexParser::QuantifierContext *ctx) {
     throw runtime_error("Invalid quantifier");
 }
 
-vector<bool> RegexVisitor::visitMetachar(regexParser::MetacharContext *ctx) {
+vector<bool> RegexVisitor::getMetacharArray(char metachar) {
     bool *selectedBuffer;
-    char metachar = ctx->getText()[1];
     switch (metachar) {
     case 'd':
         selectedBuffer = DIGIT_SET;
@@ -170,6 +170,15 @@ vector<bool> RegexVisitor::visitMetachar(regexParser::MetacharContext *ctx) {
     }
 
     return retVal;
+}
+
+vector<bool> RegexVisitor::visitMetachar(regexParser::MetacharContext *ctx) {
+    return getMetacharArray(ctx->getText()[1]);
+}
+
+vector<bool>
+RegexVisitor::visitGroupMetachar(regexParser::Group_metacharContext *ctx) {
+    return getMetacharArray(ctx->getText()[1]);
 }
 
 pair<int, int> RegexVisitor::visitQuantity(regexParser::QuantityContext *ctx) {

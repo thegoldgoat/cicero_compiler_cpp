@@ -30,10 +30,12 @@ class MLIRVisitor {
     void visitQuantifier(regexParser::QuantifierContext *ctx);
 
     mlir::DenseBoolArrayAttr visitMetachar(regexParser::MetacharContext *ctx);
+    mlir::DenseBoolArrayAttr visitGroupMetachar(regexParser::Group_metacharContext *ctx);
 
     std::pair<int, int> visitQuantity(regexParser::QuantityContext *ctx);
 
   private:
+    mlir::DenseBoolArrayAttr getMetacharArray(char metachar);
     mlir::OpBuilder builder;
 
     mlir::StringAttr filename;

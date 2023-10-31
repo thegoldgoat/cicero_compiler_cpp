@@ -26,8 +26,12 @@ class RegexVisitor {
     visitQuantifier(regexParser::QuantifierContext *ctx);
 
     vector<bool> visitMetachar(regexParser::MetacharContext *ctx);
+    vector<bool> visitGroupMetachar(regexParser::Group_metacharContext *ctx);
 
     pair<int, int> visitQuantity(regexParser::QuantityContext *ctx);
+
+  private:
+    vector<bool> getMetacharArray(char metachar);
 };
 
 } // namespace RegexParser
