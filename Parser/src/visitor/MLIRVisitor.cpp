@@ -70,8 +70,14 @@ void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
 
     // Single char
     if (ctx->terminal_sequence()) {
+        char targetChar;
+        if (ctx->terminal_sequence()->getText()[0] == '\\') {
+            targetChar = ctx->terminal_sequence()->getText()[1];
+        } else {
+            targetChar = ctx->terminal_sequence()->getText()[0];
+        }
         builder.create<dialect::MatchCharOp>(
-            LOCATION_MACRO(ctx), ctx->terminal_sequence()->getText()[0]);
+            LOCATION_MACRO(ctx), targetChar);
         return;
     }
 

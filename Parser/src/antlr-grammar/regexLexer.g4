@@ -27,6 +27,7 @@ WHITESPACE_COMPLEMENTED: '\\S';
 CHAR:
 	~('.' | '\\' | '?' | '*' | '+' | '(' | ')' | '|' | '[' | ']');
 
+ESCAPED_CHAR: '\\' .;
 
 mode GROUP;
 GROUP_HAT: '^';
