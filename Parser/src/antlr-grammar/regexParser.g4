@@ -29,7 +29,7 @@ quantity:
 atom:
 	LPAR regExp RPAR
 	| LBRACKET group+ RBRACKET
-	| LBRACKET HAT group+ RBRACKET
+	| LBRACKET GROUP_HAT group+ RBRACKET
 	| terminal_sequence
 	| metachar
 	| ANYCHAR;

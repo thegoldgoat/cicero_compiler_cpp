@@ -122,7 +122,7 @@ void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
         }
 
         // Negate the character set if the HAT is present
-        if (ctx->HAT()) {
+        if (ctx->GROUP_HAT()) {
             for (std::vector<bool>::size_type i = 0; i < sizeof(charSet); i++) {
                 charSet[i] = !charSet[i];
             }

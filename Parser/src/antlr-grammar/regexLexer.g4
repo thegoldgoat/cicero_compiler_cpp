@@ -29,6 +29,7 @@ CHAR:
 
 
 mode GROUP;
+GROUP_HAT: '^';
 MINUS: '-';
 GROUP_CHAR:
 	~('.' | '\\' | '?' | '*' | '+' | '(' | ')' | '|' | '[' | ']');

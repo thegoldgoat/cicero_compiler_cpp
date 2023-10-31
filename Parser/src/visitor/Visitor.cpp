@@ -103,7 +103,7 @@ unique_ptr<AST::Atom> RegexVisitor::visitAtom(regexParser::AtomContext *ctx) {
         }
 
         // Negate the character set if the HAT is present
-        if (ctx->HAT()) {
+        if (ctx->GROUP_HAT()) {
             for (vector<bool>::size_type i = 0; i < charSet.size(); i++) {
                 charSet[i] = !charSet[i];
             }
