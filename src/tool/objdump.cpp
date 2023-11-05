@@ -83,7 +83,7 @@ void dumpInstruction(uint16_t instruction, uint16_t &pc) {
         printf("SPLIT\t {%d,%d} \n", pc + 1, data);
         break;
     case CiceroOpCodes::MATCH_CHAR:
-        printf("MATCH\t char %c\n", data);
+        printf("MATCH\t char '%c'\n", data);
         break;
     case CiceroOpCodes::JUMP:
         printf("JMP to \t %d \n", data);
@@ -98,7 +98,7 @@ void dumpInstruction(uint16_t instruction, uint16_t &pc) {
         printf("ACCEPT_PARTIAL\n");
         break;
     case CiceroOpCodes::NOT_MATCH_CHAR:
-        printf("NOT_MATCH\t char %c\n", data);
+        printf("NOT_MATCH\t char '%c'\n", data);
         break;
     default:
         printf("UNKNOWN %d\t data %d\n", type, data);

@@ -12,7 +12,9 @@ void run(bool withOptimizations) {
     string lastProgram;
     auto it = input.begin();
     ++it; // skip first line of CSV that contains headers
+    size_t completed = 0;
     for (; it != input.end(); ++it) {
+        cerr << "\r" << completed++ << "/" << input.size() - 1 << flush;
         auto row = *it;
         // Assert row contains 3 elements
         if (row.size() != 3) {

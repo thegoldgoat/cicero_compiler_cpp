@@ -159,6 +159,13 @@ void CiceroMLIRGenerator::populateAtom(mlir::Block *block,
         return;
     }
 
+    if (auto notMatchCharOp = mlir::dyn_cast<NotMatchCharOp>(&atom)) {
+        builder.create<cicero_compiler::dialect::NotMatchCharOp>(
+            atom.getLoc(), notMatchCharOp.getTargetCharAttr());
+        builder.create<cicero_compiler::dialect::MatchAnyOp>(atom.getLoc());
+        return;
+    }
+
     if (auto matchAnyCharOp = mlir::dyn_cast<MatchAnyCharOp>(&atom)) {
         builder.create<cicero_compiler::dialect::MatchAnyOp>(atom.getLoc());
         return;
@@ -226,6 +233,62 @@ void CiceroMLIRGenerator::populateQuantifier(
     builder.setInsertionPointToEnd(block);
 }
 
+void CiceroMLIRGenerator::populateNegativeGroup(
+    mlir::Block *block, RegexParser::dialect::GroupOp &op) {
+    /*
+     * [^abc] => not_match(a) -> not_match(b) -> not_match(c) -> match_any
+     */
+    auto charsToMatch = op.getTargetChars();
+    for (size_t i = 0; i != charsToMatch.size(); i++) {
+        if (charsToMatch[i] == false) {
+            builder.create<cicero_compiler::dialect::NotMatchCharOp>(
+                builder.getUnknownLoc(), i);
+        }
+    }
+
+    builder.create<cicero_compiler::dialect::MatchAnyOp>(
+        builder.getUnknownLoc());
+}
+
+void CiceroMLIRGenerator::populatePositiveGroup(
+    mlir::Block *block, RegexParser::dialect::GroupOp &op) {
+    auto charsToMatch = op.getTargetChars();
+
+    auto endSymbol = getNewSymbolName();
+
+    int lastIndex = -1;
+    for (size_t i = 0; i != charsToMatch.size(); i++) {
+        if (charsToMatch[i] == true) {
+            if (lastIndex != -1) {
+                auto split = builder.create<cicero_compiler::dialect::SplitOp>(
+                    builder.getUnknownLoc(), endSymbol);
+
+                builder.setInsertionPointToStart(split.getBody());
+
+                builder.create<cicero_compiler::dialect::MatchCharOp>(
+                    builder.getUnknownLoc(), lastIndex);
+
+                builder.setInsertionPointAfter(split);
+            }
+            lastIndex = i;
+        }
+    }
+
+    if (lastIndex == -1) {
+        // Group was empty (or full)? Cannot match anything
+        throw std::runtime_error("Group was empty (or full)? Cannot match "
+                                 "anything. This should have been caught "
+                                 "earlier (e.g. in the parser)");
+    }
+
+    // Match the last char
+    builder.create<cicero_compiler::dialect::MatchCharOp>(
+        builder.getUnknownLoc(), lastIndex);
+
+    builder.create<cicero_compiler::dialect::PlaceholderOp>(
+        builder.getUnknownLoc(), endSymbol);
+}
+
 void CiceroMLIRGenerator::populateGroup(mlir::Block *block,
                                         RegexParser::dialect::GroupOp &op) {
     /*
@@ -241,10 +304,10 @@ void CiceroMLIRGenerator::populateGroup(mlir::Block *block,
      * endSymbol: placeholder
      *
      * [^abc]
-     * Split {not_match(a) jump(endSymbol)}
-     * Split {not_match(b) jump(endSymbol)}
+     * not_match(a)
+     * not_match(b)
      * not_match(c)
-     * endSymbol: placeholder
+     * match_any
      */
     auto charsToMatch = op.getTargetChars();
 
@@ -252,64 +315,11 @@ void CiceroMLIRGenerator::populateGroup(mlir::Block *block,
     vector<bool>::size_type countToMatch =
         std::count(charsToMatch.begin(), charsToMatch.end(), true);
 
-    bool flippedGroup = (countToMatch > charsToMatch.size() / 2);
-
-    auto endSymbol = getNewSymbolName();
-
-    auto matchCreatorNotFlipped = [this](char c) {
-        builder.create<cicero_compiler::dialect::MatchCharOp>(
-            builder.getUnknownLoc(), c);
-    };
-
-    auto matchCreatorFlipped = [this](char c) {
-        builder.create<cicero_compiler::dialect::NotMatchCharOp>(
-            builder.getUnknownLoc(), c);
-    };
-
-    auto matchCreator = flippedGroup ? std::function(matchCreatorFlipped)
-                                     : std::function(matchCreatorNotFlipped);
-
-    int lastIndex = -1;
-    for (size_t i = 0; i != charsToMatch.size(); i++) {
-        /*
-            +-----------------+--------------+---------------------+
-            | charsToMatch[i] | flippedGroup | action              |
-            +-----------------+--------------+---------------------+
-            | true            | true         | None                |
-            +-----------------+--------------+---------------------+
-            | true            | false        | split(matchChar)    |
-            +-----------------+--------------+---------------------+
-            | false           | true         | split(notMatchChar) |
-            +-----------------+--------------+---------------------+
-            | false           | false        | None                |
-            +-----------------+--------------+---------------------+
-        */
-        if (charsToMatch[i] != flippedGroup) {
-            if (lastIndex != -1) {
-                auto split = builder.create<cicero_compiler::dialect::SplitOp>(
-                    builder.getUnknownLoc(), endSymbol);
-
-                builder.setInsertionPointToStart(split.getBody());
-                matchCreator(lastIndex);
-
-                builder.setInsertionPointAfter(split);
-            }
-            lastIndex = i;
-        }
+    if (countToMatch > charsToMatch.size() / 2) {
+        populateNegativeGroup(block, op);
+    } else {
+        populatePositiveGroup(block, op);
     }
-
-    if (lastIndex == -1) {
-        // Group was empty (or full)? Cannot match anything
-        throw std::runtime_error("Group was empty (or full)? Cannot match "
-                                 "anything. This should have been caught "
-                                 "earlier (e.g. in the parser)");
-    }
-
-    // Match (or not match) the last char
-    matchCreator(lastIndex);
-
-    builder.create<cicero_compiler::dialect::PlaceholderOp>(
-        builder.getUnknownLoc(), endSymbol);
 }
 
 std::string CiceroMLIRGenerator::getNewSymbolName() {

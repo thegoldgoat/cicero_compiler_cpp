@@ -97,9 +97,21 @@ void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
 
     // Group
     if (ctx->LBRACKET()) {
+        auto groupCtxs = ctx->group();
+        if (groupCtxs.size() == 1 && groupCtxs[0]->single_char) {
+            // Only one char in the group, just match (or not match) it
+            if (ctx->GROUP_HAT()) {
+                builder.create<dialect::NotMatchCharOp>(
+                    LOCATION_MACRO(ctx), groupCtxs[0]->single_char->getText()[0]);
+            } else {
+                builder.create<dialect::MatchCharOp>(
+                    LOCATION_MACRO(ctx), groupCtxs[0]->single_char->getText()[0]);
+            }
+            return;
+        }
         bool charSet[256];
         memset(charSet, false, sizeof(charSet));
-        for (auto &groupCtx : ctx->group()) {
+        for (auto &groupCtx : groupCtxs) {
             if (groupCtx->group_metachar()) {
                 auto mergeChar = visitGroupMetachar(groupCtx->group_metachar());
 

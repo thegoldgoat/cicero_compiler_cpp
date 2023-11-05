@@ -122,6 +122,17 @@ def MatchCharOp : Regex_Op<"match_char"> {
     let hasCustomAssemblyFormat = 1;
 }
 
+def NotMatchCharOp : Regex_Op<"not_match_char"> {
+    let summary = "Match anything but single character";
+    let description = [{
+        Match if the character is not equal to the one specified
+    }];
+
+    let arguments = (ins I8Attr:$targetChar);
+
+    let hasCustomAssemblyFormat = 1;
+}
+
 def MatchAnyCharOp : Regex_Op<"match_any_char"> {
     let summary = "Match any character";
     let description = [{

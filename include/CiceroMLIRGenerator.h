@@ -41,6 +41,18 @@ class CiceroMLIRGenerator {
 
     unsigned int symbolCounter = 0;
     std::string getNewSymbolName();
+
+  private:
+    /// @brief Handle the case when we have a group where it is more convenient
+    /// to match the positive case: for example [abc], we may want to create
+    /// three threads that match a, b and c
+    void populatePositiveGroup(mlir::Block *block,
+                               RegexParser::dialect::GroupOp &op);
+    /// @brief  Handle the case when we have a group where it is more convenient
+    /// to match the negative case: for example [^abc], we may want to just
+    /// not_match(a) -> not_match(b) -> not_match(c) -> match_any
+    void populateNegativeGroup(mlir::Block *block,
+                               RegexParser::dialect::GroupOp &op);
 };
 
 } // namespace cicero_compiler
