@@ -196,6 +196,22 @@ void CiceroMLIRGenerator::populateQuantifier(
     auto min = op.getMin();
     auto max = op.getMax();
 
+    // For the specific case of the '+' quantifier
+    if (min == 1 && max == -1) {
+        /*
+         * SYMBOL: placeholder
+         * atom
+         * flatsplit (SYMBOL)
+         */
+        auto splitSymbol = getNewSymbolName();
+        builder.create<cicero_compiler::dialect::PlaceholderOp>(
+            builder.getUnknownLoc(), splitSymbol);
+        populateAtom(block, atom);
+        builder.create<cicero_compiler::dialect::FlatSplitOp>(
+            builder.getUnknownLoc(), splitSymbol);
+        return;
+    }
+
     // Add `min` times the atom
     for (auto count = min; count > 0; count--) {
         populateAtom(block, atom);
