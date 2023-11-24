@@ -37,8 +37,22 @@ WHITESPACE_COMPLEMENTED: '\\S';
 CHAR:
 	~('.' | '\\' | '?' | '*' | '+' | '(' | ')' | '|' | '[' | ']');
 
+// Escapes taken from https://docs.python.org/3/reference/lexical_analysis.html#escape-sequences
+
+// Escape a char expressed in as hex digit. "\xb3" for example is "0xb3"
 ESCAPED_HEX:
 	'\\x' [0-9][0-9] { setText(decodeEscapedHex(getText())); };
+
+// Other escapes
+ESCAPE_BELL: '\\a' { setText("\a"); };
+ESCAPE_BACKSPACE: '\\b' { setText("\b"); };
+ESCAPE_FORMFEED: '\\f' { setText("\f"); };
+ESCAPE_NEWLINE: '\\n' { setText("\n"); };
+ESCAPE_CARRIAGE_RETURN: '\\r' { setText("\r"); };
+ESCAPE_TAB: '\\t' { setText("\t"); };
+ESCAPE_VERTICAL_TAB: '\\v' { setText("\v"); };
+
+// Most general escape
 ESCAPED_CHAR: '\\' . { setText(getText().substr(1)); };
 
 mode GROUP;

@@ -5,14 +5,14 @@ options {
 
 // Parser root context, ensures all input is matched
 root:
-	noprefix=HAT? LPAR regExp RPAR nosuffix=DOLLAR? EOF
+	noprefix = HAT? LPAR regExp RPAR nosuffix = DOLLAR? EOF
 	| regExp EOF;
 
 // Regular Expression, alternatives of concatenations
 regExp: concatenation (PIPE concatenation)*;
 
 // Concatenation, list of pieces
-concatenation: pieces+=piece+ DOLLAR?;
+concatenation: pieces += piece+ DOLLAR?;
 
 piece: atom quantifier?;
 
@@ -22,9 +22,9 @@ quantifier:
 	| PLUS
 	| QUANTITY_BEGIN quantity QUANTITY_END;
 quantity:
-	minnum=QUANTITY_NUM QUANTITY_SEPARATOR maxnum=QUANTITY_NUM // From Integer_1 to Integer_2
-	| atleastnum=QUANTITY_NUM QUANTITY_SEPARATOR // At least Integer
-	| exactlynum=QUANTITY_NUM; // Exactly Integer
+	minnum = QUANTITY_NUM QUANTITY_SEPARATOR maxnum = QUANTITY_NUM // From Integer_1 to Integer_2
+	| atleastnum = QUANTITY_NUM QUANTITY_SEPARATOR // At least Integer
+	| exactlynum = QUANTITY_NUM; // Exactly Integer
 
 atom:
 	LPAR regExp RPAR
@@ -34,7 +34,18 @@ atom:
 	| metachar
 	| ANYCHAR;
 
-terminal_sequence: CHAR | ESCAPED_HEX | ESCAPED_CHAR | DIGIT_CHAR;
+terminal_sequence:
+	CHAR
+	| ESCAPED_HEX
+	| ESCAPED_CHAR
+	| ESCAPE_BELL
+	| ESCAPE_BACKSPACE
+	| ESCAPE_FORMFEED
+	| ESCAPE_NEWLINE
+	| ESCAPE_CARRIAGE_RETURN
+	| ESCAPE_TAB
+	| ESCAPE_VERTICAL_TAB
+	| DIGIT_CHAR;
 
 metachar:
 	WHITESPACE
@@ -44,9 +55,7 @@ metachar:
 	| DIGIT
 	| DIGIT_COMPLEMENTED;
 
-group_terminal_sequence:
-	GROUP_CHAR
-	| GROUP_DIGIT_CHAR;
+group_terminal_sequence: GROUP_CHAR | GROUP_DIGIT_CHAR;
 
 group_metachar:
 	GROUP_WHITESPACE
@@ -57,6 +66,6 @@ group_metachar:
 	| GROUP_DIGIT_COMPLEMENTED;
 
 group:
-	first_char=group_terminal_sequence MINUS second_char=group_terminal_sequence
-	| single_char=group_terminal_sequence
+	first_char = group_terminal_sequence MINUS second_char = group_terminal_sequence
+	| single_char = group_terminal_sequence
 	| group_metachar;
