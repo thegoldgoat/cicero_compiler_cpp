@@ -68,6 +68,20 @@ GROUP_WORD: '\\w';
 GROUP_WORD_COMPLEMENTED: '\\W';
 GROUP_WHITESPACE: '\\s';
 GROUP_WHITESPACE_COMPLEMENTED: '\\S';
+
+GROUP_ESCAPED_HEX:
+	'\\x' [0-9][0-9] { setText(decodeEscapedHex(getText())); };
+
+GROUP_ESCAPE_BELL: '\\a' { setText("\a"); };
+GROUP_ESCAPE_BACKSPACE: '\\b' { setText("\b"); };
+GROUP_ESCAPE_FORMFEED: '\\f' { setText("\f"); };
+GROUP_ESCAPE_NEWLINE: '\\n' { setText("\n"); };
+GROUP_ESCAPE_CARRIAGE_RETURN: '\\r' { setText("\r"); };
+GROUP_ESCAPE_TAB: '\\t' { setText("\t"); };
+GROUP_ESCAPE_VERTICAL_TAB: '\\v' { setText("\v"); };
+
+GROUP_ESCAPED_CHAR: '\\' . { setText(getText().substr(1)); };
+
 RBRACKET: ']' -> popMode;
 
 
