@@ -34,7 +34,7 @@ atom:
 	| metachar
 	| ANYCHAR;
 
-terminal_sequence: CHAR | ESCAPED_CHAR | DIGIT_CHAR;
+terminal_sequence: CHAR | ESCAPED_HEX | ESCAPED_CHAR | DIGIT_CHAR;
 
 metachar:
 	WHITESPACE

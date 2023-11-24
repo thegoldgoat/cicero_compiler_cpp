@@ -1,5 +1,15 @@
 lexer grammar regexLexer;
 
+@lexer::members {
+	std::string decodeEscapedHex(std::string s) {
+		std::stringstream ss;
+		ss << std::hex << s.substr(2);
+		int result;
+		ss >> result;
+		return std::string(1, static_cast<char>(result));
+	}
+}
+
 PIPE: '|';
 STAR: '*';
 PLUS: '+';
@@ -27,7 +37,9 @@ WHITESPACE_COMPLEMENTED: '\\S';
 CHAR:
 	~('.' | '\\' | '?' | '*' | '+' | '(' | ')' | '|' | '[' | ']');
 
-ESCAPED_CHAR: '\\' .;
+ESCAPED_HEX:
+	'\\x' [0-9][0-9] { setText(decodeEscapedHex(getText())); };
+ESCAPED_CHAR: '\\' . { setText(getText().substr(1)); };
 
 mode GROUP;
 GROUP_HAT: '^';

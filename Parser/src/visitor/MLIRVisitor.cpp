@@ -70,14 +70,8 @@ void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
 
     // Single char
     if (ctx->terminal_sequence()) {
-        char targetChar;
-        if (ctx->terminal_sequence()->getText()[0] == '\\') {
-            targetChar = ctx->terminal_sequence()->getText()[1];
-        } else {
-            targetChar = ctx->terminal_sequence()->getText()[0];
-        }
         builder.create<dialect::MatchCharOp>(
-            LOCATION_MACRO(ctx), targetChar);
+            LOCATION_MACRO(ctx), ctx->terminal_sequence()->getText()[0]);
         return;
     }
 
@@ -102,10 +96,12 @@ void MLIRVisitor::visitAtom(regexParser::AtomContext *ctx) {
             // Only one char in the group, just match (or not match) it
             if (ctx->GROUP_HAT()) {
                 builder.create<dialect::NotMatchCharOp>(
-                    LOCATION_MACRO(ctx), groupCtxs[0]->single_char->getText()[0]);
+                    LOCATION_MACRO(ctx),
+                    groupCtxs[0]->single_char->getText()[0]);
             } else {
                 builder.create<dialect::MatchCharOp>(
-                    LOCATION_MACRO(ctx), groupCtxs[0]->single_char->getText()[0]);
+                    LOCATION_MACRO(ctx),
+                    groupCtxs[0]->single_char->getText()[0]);
             }
             return;
         }
