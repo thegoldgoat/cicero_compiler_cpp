@@ -48,6 +48,30 @@ add_dependencies(
   RegexDialect
 )
 
+add_executable(
+  ciceroc-measure
+  src/tool/ciceroc-measure.cpp
+  src/mlir-dialect/CiceroDialectWrapper.cpp
+  src/CiceroMLIRGenerator.cpp
+  src/CiceroPasses.cpp
+  src/cicero_helper.cpp
+)
+
+add_dependencies(
+  ciceroc-measure
+  CiceroDialect
+  RegexDialect
+)
+
+target_link_libraries(ciceroc-measure
+  PRIVATE
+    MLIRRegexParser
+    MLIRAnalysis
+    MLIRIR
+    MLIRParser
+    MLIRSideEffectInterfaces
+    MLIRTransforms)
+
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 
 target_link_libraries(ciceroc
