@@ -41,7 +41,7 @@ CHAR:
 
 // Escape a char expressed in as hex digit. "\xb3" for example is "0xb3"
 ESCAPED_HEX:
-	'\\x' [0-9][0-9] { setText(decodeEscapedHex(getText())); };
+	'\\x' [0-9a-fA-F][0-9a-fA-F] { setText(decodeEscapedHex(getText())); };
 
 // Other escapes
 ESCAPE_BELL: '\\a' { setText("\a"); };
