@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
     module.dump();
 
-    if (RegexParser::optimizeRegex(module).failed()) {
+    if (RegexParser::optimizeRegex(module, true).failed()) {
         cerr << "Optimization failed" << endl;
         return 1;
     }

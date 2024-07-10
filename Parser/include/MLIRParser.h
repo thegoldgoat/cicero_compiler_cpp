@@ -25,7 +25,10 @@ mlir::ModuleOp parseRegexFromString(mlir::MLIRContext &context,
 
 /// @brief Run optimization passes on the regex module
 /// @param module the module to optimize
+/// @param optimizeBoundaries if true, `SimplifyLeadingQuantifiers` optimization
+/// is enabled
 /// @return success if the optimization passes are successful, failure otherwise
-mlir::LogicalResult optimizeRegex(mlir::ModuleOp &module);
+mlir::LogicalResult optimizeRegex(mlir::ModuleOp &module,
+                                  bool optimizeBoundaries);
 
 } // namespace RegexParser

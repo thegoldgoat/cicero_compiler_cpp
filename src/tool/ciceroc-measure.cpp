@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
         }
 
         if (optimizationsEnabled) {
-            if (RegexParser::optimizeRegex(regexModule).failed()) {
+            if (RegexParser::optimizeRegex(regexModule, true).failed()) {
                 regexModule.print(llvm::outs());
                 cerr << "Regex optimization failed" << endl;
                 return -1;

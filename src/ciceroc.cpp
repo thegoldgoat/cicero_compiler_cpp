@@ -65,9 +65,15 @@ cl::opt<bool>
     optimizeRegex("Oregex",
                   cl::desc("Enable middle-end optimization on regex syntax"));
 
+cl::opt<bool>
+    optimizeRegexBoundary("Oregexboundary",
+                          cl::desc("Enable optimization on regex boundaries"));
+
 #define IS_JUMP_OPT_ENABLED (optimizeJumps.getValue() || optimizeAll.getValue())
 #define IS_REGEX_OPT_ENABLED                                                   \
     (optimizeRegex.getValue() || optimizeAll.getValue())
+#define IS_REGEX_BOUNDARY_OPT_ENABLED                                          \
+    (optimizeRegexBoundary.getValue() || optimizeAll.getValue())
 
 /// @brief Get the module containing Regex dialect operations
 /// @param context MLIRContext to use
@@ -117,8 +123,18 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    if (IS_REGEX_BOUNDARY_OPT_ENABLED && !IS_REGEX_OPT_ENABLED) {
+        cerr << "Cannot enable boundary optimization ('-Oregexboundary') "
+                "without regex "
+                "optimizations. Add '-Oregex' option."
+             << endl;
+        return -1;
+    }
+
     if (IS_REGEX_OPT_ENABLED) {
-        if (RegexParser::optimizeRegex(regexModule).failed()) {
+        if (RegexParser::optimizeRegex(regexModule,
+                                       IS_REGEX_BOUNDARY_OPT_ENABLED)
+                .failed()) {
             regexModule.print(llvm::outs());
             cerr << "Regex optimization failed" << endl;
             return -1;

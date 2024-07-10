@@ -57,13 +57,17 @@ mlir::ModuleOp parseRegexFromString(mlir::MLIRContext &context,
     return parseRegexImpl(context, antlr4::ANTLRInputStream(regex), filename);
 }
 
-mlir::LogicalResult optimizeRegex(mlir::ModuleOp &module) {
+mlir::LogicalResult optimizeRegex(mlir::ModuleOp &module,
+                                  bool optimizeBoundaries) {
     mlir::MLIRContext *context = module.getContext();
     mlir::RewritePatternSet patterns(context);
     patterns.add<passes::FactorizeRoot, passes::FactorizeSubregex,
                  passes::SimplifySubregexNotQuantified,
-                 passes::SimplifySubregexSinglePiece,
-                 passes::SimplifyLeadingQuantifiers>(context);
+                 passes::SimplifySubregexSinglePiece>(context);
+
+    if (optimizeBoundaries) {
+        patterns.add<passes::SimplifyLeadingQuantifiers>(context);
+    }
 
     return runMyGreedyPass<mlir::ModuleOp>(
         module.getOperation(),
