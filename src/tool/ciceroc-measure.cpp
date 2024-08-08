@@ -119,6 +119,9 @@ int main(int argc, char **argv) {
                         end_time - start_time)
                         .count();
 
+    // Print this as first line to facilitate parsing using external scripts
+    cout << duration / regexes.size() << endl;
+
     cout << "Total time: " << duration << " microseconds" << endl;
     cout << "Average time: " << duration / regexes.size() << " microseconds"
          << endl;
