@@ -1,8 +1,20 @@
 # Cicero Compiler CPP
 
-C++ implementation of a regex compiler for [Cicero](https://github.com/necst/cicero).
+Compiler for translating Regular Expressions (REs) into a domain specific ISA for [Cicero](https://github.com/necst/cicero).
 
-## Build
+## Build with Docker
+
+The simplest way to build the compiler is by using [Docker](https://docs.docker.com/engine/install/). `Docker/Dockerfile` is provided to build the image:
+
+```bash
+# Build docker image which contains build dependencies
+docker build -t cicero_build_environment:latest Docker
+
+# Run build and test within docker image
+docker run -v $PWD:/app cicero_build_environment:latest /bin/bash /app/Docker/build_and_test.sh
+```
+
+## Build manually 
 
 Install dependencies first:
 
@@ -33,65 +45,16 @@ cmake ..
 cmake --build .
 ```
 
-### Build with Docker
+## Usage
 
-If you prefer, you can use a Docker image to build. You can find in `Docker/Dockerfile` the dockerfile to build the image:
+Once built, the compiler executable can be found in `./build/ciceroc`.
 
-```bash
-# Build docker image which contains build dependencies
-docker build -t cicero_build_environment:latest Docker
+To compiler an example `ab|cd` RE into `out.cicero`, enabling all optimizations, you can run:
 
-# Run build and test within docker image
-docker run -v $PWD:/app cicero_build_environment:latest /bin/bash /app/Docker/build_and_test.sh
-```
+`./build/ciceroc --regex="ab|cd" --emit=compiled -o out.cicero -Oall`
 
-## Dialect Design
+Different output targets can be achieved by specifying one of the available options: `--emit=regexmlir|ciceromlir|ciceromlir.dot|compiled`.
 
-Here is an example before and after the canonicalization of the `cicero.split` operation, which
-gets replaced by a `cicero.flat_split` operation. The `cicero.flat_split` operation has a reference
-to the actual body of the split, which originally was the body of the `cicero.split` operation.
+Optimizations can be enabled all together (`-Oall`), or one by one: `-Oregex`, `-Oregexboundary`, `-Ojump`.
 
-```mlir
-
-// Example: (ab|cd)|ef
---- mlir before any pattern rewrites ---
-
-module {
-  cicero.split {splitReturn = @PREFIX_SPLIT, sym_name = "PREFIX_SPLIT"} {
-    cicero.match_any
-  }
-  cicero.split {splitReturn = @S0} {
-    cicero.split {splitReturn = @S1} {
-      cicero.match_char a
-      cicero.match_char b
-    }
-    cicero.match_char c
-    cicero.match_char d
-    cicero.placeholder {sym_name = "S1"}
-  }
-  cicero.match_char e
-  cicero.match_char f
-  cicero.placeholder {sym_name = "S0"}
-  cicero.accept_partial
-}
-
---- mlir after pattern rewrites      ---
-
-module {
-  cicero.flat_split {splitTarget = @F2, sym_name = "PREFIX_SPLIT"}
-  cicero.flat_split {splitTarget = @F0}
-  cicero.match_char e
-  cicero.match_char f
-  cicero.accept_partial {sym_name = "S0"}
-  cicero.flat_split {splitTarget = @F1, sym_name = "F0"}
-  cicero.match_char c
-  cicero.match_char d
-  cicero.jump {sym_name = "S1", target = @S0}
-  cicero.match_char {sym_name = "F1"} a
-  cicero.match_char b
-  cicero.jump {target = @S1}
-  cicero.match_any {sym_name = "F2"}
-  cicero.jump {target = @PREFIX_SPLIT}
-}
-
-```
+Output binary can be inspected using `./build/objdump binary.cicero`
